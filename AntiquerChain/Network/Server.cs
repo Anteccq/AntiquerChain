@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Utf8Json;
 
-namespace AntiquerChain.Network.Server
+namespace AntiquerChain.Network
 {
     public class Server : IDisposable
     {
