@@ -5,15 +5,18 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Utf8Json;
 
 namespace AntiquerChain.Network.Server
 {
-    public class Server
+    public class Server : IDisposable
     {
         private TcpListener _listener;
-        public CancellationTokenSource TokenSource { get; }
+        public CancellationTokenSource TokenSource { get; set; }
         public CancellationToken Token { get; }
         private Task _listenTask;
+
+        public event Action<Message> MessageReceived;
 
         public Server( CancellationTokenSource tokenSource)
         {
@@ -21,7 +24,7 @@ namespace AntiquerChain.Network.Server
             Token = tokenSource.Token;
         }
 
-        public void StartAsync()
+        public void Start()
         {
             var endPoint = IPEndPoint.Parse("0.0.0.0:50151");
             _listener = new TcpListener(endPoint);
@@ -41,18 +44,27 @@ namespace AntiquerChain.Network.Server
                 {
                     var t = _listener.AcceptTcpClientAsync();
                     if ((await Task.WhenAny(t, tcs.Task)).IsCanceled) break;
-                    TcpClient client;
                     try
                     {
-                        client = t.Result;
+                        using var client = t.Result;
+                        var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
+                        MessageReceived?.Invoke(message);
                     }
                     catch (SocketException)
                     {
-                        Console.WriteLine(e);
-                        throw;
+                        //Log
                     }
                 }
             }
+            _listener.Stop();
+        }
+
+        public void Dispose()
+        {
+            if(TokenSource is null) return;
+            TokenSource.Cancel();
+            TokenSource.Dispose();
+            TokenSource = null;
         }
     }
 }
