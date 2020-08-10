@@ -37,23 +37,19 @@ namespace AntiquerChain.Network.Server
             Console.WriteLine("接続待機");
             if(_listener is null) return;
 
-            var tcs = new TaskCompletionSource<int>();
-            await using (Token.Register(tcs.SetCanceled))
+            while (!Token.IsCancellationRequested)
             {
-                while (!Token.IsCancellationRequested)
+                var t = _listener.AcceptTcpClientAsync();
+                if ( t.IsCanceled ) break;
+                try
                 {
-                    var t = _listener.AcceptTcpClientAsync();
-                    if ((await Task.WhenAny(t, tcs.Task)).IsCanceled) break;
-                    try
-                    {
-                        using var client = t.Result;
-                        var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
-                        MessageReceived?.Invoke(message);
-                    }
-                    catch (SocketException)
-                    {
-                        //Log
-                    }
+                    using var client = t.Result;
+                    var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
+                    MessageReceived?.Invoke(message);
+                }
+                catch (SocketException)
+                {
+                    //Log
                 }
             }
             _listener.Stop();
