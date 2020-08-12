@@ -16,12 +16,13 @@ namespace AntiquerChain.Network
         private Server _server;
         private ILogger _logger = Logging.Create<NetworkManager>();
 
-        public NetworkManager()
+        public NetworkManager(CancellationToken token)
         {
             var tokenSource = new CancellationTokenSource();
             _server = new Server(tokenSource);
             _server.NewConnection += NewConnection;
             _server.MessageReceived += MessageHandle;
+            token.Register(_server.Dispose);
         }
 
         void NewConnection(IPEndPoint ipEndPoint)
