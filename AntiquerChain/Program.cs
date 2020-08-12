@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Threading.Tasks;
+using AntiquerChain.Formatter;
 using ConsoleAppFramework;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Utf8Json;
+using Utf8Json.Resolvers;
 
 namespace AntiquerChain
 {
@@ -9,6 +13,8 @@ namespace AntiquerChain
     {
         static async Task Main(string[] args)
         {
+            Logging.Factory
+            CompositeResolver.RegisterAndSetAsDefault(new IJsonFormatter[] { new IPEndPointFormatter() }, new[] { StandardResolver.Default });
             await Host.CreateDefaultBuilder().RunConsoleAppFrameworkAsync<AntiquerChain>(args);
         }
     }
