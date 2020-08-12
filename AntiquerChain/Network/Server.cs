@@ -80,7 +80,7 @@ namespace AntiquerChain.Network
         public void Dispose()
         {
             _logger.LogInformation("Stop listening...");
-            ConnectingEndPoints.Clear();
+            ConnectingEndPoints?.Clear();
             if(TokenSource is null) return;
             TokenSource.Cancel();
             TokenSource.Dispose();

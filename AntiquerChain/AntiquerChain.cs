@@ -24,7 +24,6 @@ namespace AntiquerChain
             var t = Task.Run(async () => await manager.ConnectAsync(ipEndPoint));
 
             Console.ReadLine();
-            manager.Dispose();
             Console.WriteLine("終了");
         }
     }
