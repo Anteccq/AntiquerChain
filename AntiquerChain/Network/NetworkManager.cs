@@ -25,14 +25,16 @@ namespace AntiquerChain.Network
             token.Register(_server.Dispose);
         }
 
-        public void StartServer() => _server?.Start();
+        public async Task StartServerAsync() => await (_server?.StartAsync() ?? Task.CompletedTask);
 
-        void NewConnection(IPEndPoint ipEndPoint)
+        async Task NewConnection(IPEndPoint ipEndPoint)
         {
+            Console.WriteLine($"{ipEndPoint}");
             using var client = new TcpClient(AddressFamily.InterNetwork);
-            client.ConnectAsync(ipEndPoint.Address, Server.SERVER_PORT);
-            using var stream = client.GetStream();
-            JsonSerializer.SerializeAsync(stream, HandShake.CreateMessage(_server.ConnectingEndPoints));
+            await client.ConnectAsync(ipEndPoint.Address, Server.SERVER_PORT);
+            await using var stream = client.GetStream();
+            var d =JsonSerializer.Serialize(HandShake.CreateMessage(_server.ConnectingEndPoints));
+            await stream.WriteAsync(d, 0, d.Length);
         }
 
         Task MessageHandle(Message msg, IPEndPoint endPoint)

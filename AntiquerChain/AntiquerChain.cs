@@ -12,7 +12,7 @@ namespace AntiquerChain
     public class AntiquerChain : ConsoleAppBase
     {
         [Command("run", "Start P2P Network")]
-        public void Run([Option("i")] string endPoint)
+        public async Task RunAsync([Option("i")] string endPoint)
         {
             if (string.IsNullOrEmpty(endPoint) || !IPEndPoint.TryParse(endPoint, out var ipEndPoint))
             {
@@ -20,7 +20,7 @@ namespace AntiquerChain
                 return;
             }
             var manager = new NetworkManager(Context.CancellationToken);
-            manager.StartServer();
+            await manager.StartServerAsync();
             var t = Task.Run(async () => await manager.ConnectAsync(ipEndPoint));
 
             Console.ReadLine();
