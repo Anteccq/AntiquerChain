@@ -5,11 +5,11 @@ using Microsoft.Extensions.Hosting;
 
 namespace AntiquerChain
 {
-    class Program : ConsoleAppBase
+    class Program
     {
         static async Task Main(string[] args)
         {
-            await Host.CreateDefaultBuilder().RunConsoleAppFrameworkAsync<Program>(args);
+            await Host.CreateDefaultBuilder().RunConsoleAppFrameworkAsync<AntiquerChain>(args);
         }
     }
 }
