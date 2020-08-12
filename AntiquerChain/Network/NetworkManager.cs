@@ -19,11 +19,15 @@ namespace AntiquerChain.Network
             var tokenSource = new CancellationTokenSource();
             _server = new Server(tokenSource);
             _server.NewConnection += NewConnection;
+            _server.MessageReceived += MessageHandle;
         }
 
-        public void NewConnection(IPEndPoint ipEndPoint)
+        void NewConnection(IPEndPoint ipEndPoint)
         {
-            
+            using var client = new TcpClient(AddressFamily.InterNetwork);
+            client.ConnectAsync(ipEndPoint.Address, Server.SERVER_PORT);
+            using var stream = client.GetStream();
+            JsonSerializer.SerializeAsync(stream, HandShake.CreateMessage(_server.ConnectingEndPoints));
         }
 
         Task MessageHandle(Message msg, IPEndPoint endPoint)
@@ -31,7 +35,7 @@ namespace AntiquerChain.Network
             return msg.Type switch
             {
                 MessageType.HandShake => HandShakeHandle(JsonSerializer.Deserialize<HandShake>(msg.Payload), endPoint),
-                MessageType.Addr => Task.CompletedTask,
+                MessageType.Addr => AddrHandle(JsonSerializer.Deserialize<AddrPayload>(msg.Payload), endPoint),
                 MessageType.Inventory => Task.CompletedTask,
                 MessageType.Notice => Task.CompletedTask,
                 MessageType.Ping => Task.CompletedTask,
@@ -42,6 +46,13 @@ namespace AntiquerChain.Network
         async Task HandShakeHandle(HandShake msg, IPEndPoint endPoint)
         {
             if(!CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
+            _server.ConnectingEndPoints = _server.ConnectingEndPoints.Union(msg.KnownIpEndPoints) as List<IPEndPoint>;
+            await BroadcastEndPointsAsync();
+        }
+
+        async Task AddrHandle(AddrPayload msg, IPEndPoint endPoint)
+        {
+            if (!CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
             _server.ConnectingEndPoints = _server.ConnectingEndPoints.Union(msg.KnownIpEndPoints) as List<IPEndPoint>;
             await BroadcastEndPointsAsync();
         }
@@ -59,7 +70,7 @@ namespace AntiquerChain.Network
             }
         }
 
-        bool CompareIpEndPoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
+        static bool CompareIpEndPoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
         {
             var listAstr = listA.Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
             var listBstr = listB.Select(i => $"{i.Address}").OrderBy(s => s).ToArray();

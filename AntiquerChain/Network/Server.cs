@@ -17,7 +17,7 @@ namespace AntiquerChain.Network
         public CancellationToken Token { get; }
         private Task _listenTask;
 
-        public event Action<Message, IPEndPoint> MessageReceived;
+        public event Func<Message, IPEndPoint, Task> MessageReceived;
         public event Action<IPEndPoint> NewConnection;
         public List<IPEndPoint> ConnectingEndPoints { get; set; } = new List<IPEndPoint>();
 
@@ -50,7 +50,7 @@ namespace AntiquerChain.Network
                     using var client = t.Result;
                     var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
                     var endPoint = client.Client.RemoteEndPoint;
-                    MessageReceived?.Invoke(message, endPoint as IPEndPoint);
+                    await (MessageReceived?.Invoke(message, endPoint as IPEndPoint) ?? Task.CompletedTask);
                     AddEndPoints(endPoint);
                 }
                 catch (SocketException)
@@ -68,7 +68,9 @@ namespace AntiquerChain.Network
             {
                 if(ConnectingEndPoints.Contains(ipEndPoint)) return;
                 ConnectingEndPoints.Add(ipEndPoint);
+                NewConnection?.Invoke(ipEndPoint);
             }
+
         }
 
         public void Dispose()
