@@ -7,16 +7,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using Utf8Json;
 
-namespace AntiquerChain.Network.Server
+namespace AntiquerChain.Network
 {
     public class Server : IDisposable
     {
+        public const int SERVER_PORT = 50151;
         private TcpListener _listener;
         public CancellationTokenSource TokenSource { get; set; }
         public CancellationToken Token { get; }
         private Task _listenTask;
 
-        public event Action<Message> MessageReceived;
+        public event Func<Message, IPEndPoint, Task> MessageReceived;
+        public event Action<IPEndPoint> NewConnection;
+        public List<IPEndPoint> ConnectingEndPoints { get; set; } = new List<IPEndPoint>();
 
         public Server( CancellationTokenSource tokenSource)
         {
@@ -26,9 +29,10 @@ namespace AntiquerChain.Network.Server
 
         public void Start()
         {
-            var endPoint = IPEndPoint.Parse("0.0.0.0:50151");
+            var endPoint = IPEndPoint.Parse($"0.0.0.0:{SERVER_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
+            AddEndPoints(_listener.LocalEndpoint);
             _listenTask = ConnectionWaitAsync();
         }
 
@@ -45,7 +49,9 @@ namespace AntiquerChain.Network.Server
                 {
                     using var client = t.Result;
                     var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
-                    MessageReceived?.Invoke(message);
+                    var endPoint = client.Client.RemoteEndPoint;
+                    await (MessageReceived?.Invoke(message, endPoint as IPEndPoint) ?? Task.CompletedTask);
+                    AddEndPoints(endPoint);
                 }
                 catch (SocketException)
                 {
@@ -53,6 +59,18 @@ namespace AntiquerChain.Network.Server
                 }
             }
             _listener.Stop();
+        }
+
+        public void AddEndPoints(EndPoint endPoint)
+        {
+            if(!(endPoint is IPEndPoint ipEndPoint)) return;
+            lock (ConnectingEndPoints)
+            {
+                if(ConnectingEndPoints.Contains(ipEndPoint)) return;
+                ConnectingEndPoints.Add(ipEndPoint);
+                NewConnection?.Invoke(ipEndPoint);
+            }
+
         }
 
         public void Dispose()
