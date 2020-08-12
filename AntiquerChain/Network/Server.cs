@@ -11,12 +11,13 @@ namespace AntiquerChain.Network
 {
     public class Server : IDisposable
     {
+        public const int SERVER_PORT = 50151;
         private TcpListener _listener;
         public CancellationTokenSource TokenSource { get; set; }
         public CancellationToken Token { get; }
         private Task _listenTask;
 
-        public event Action<Message> MessageReceived;
+        public event Action<Message, IPEndPoint> MessageReceived;
         public event Action<IPEndPoint> NewConnection;
         public List<IPEndPoint> ConnectingEndPoints { get; set; } = new List<IPEndPoint>();
 
@@ -28,7 +29,7 @@ namespace AntiquerChain.Network
 
         public void Start()
         {
-            var endPoint = IPEndPoint.Parse("0.0.0.0:50151");
+            var endPoint = IPEndPoint.Parse($"0.0.0.0:{SERVER_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
             AddEndPoints(_listener.LocalEndpoint);
@@ -48,8 +49,9 @@ namespace AntiquerChain.Network
                 {
                     using var client = t.Result;
                     var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
-                    MessageReceived?.Invoke(message);
-                    AddEndPoints(client.Client.RemoteEndPoint);
+                    var endPoint = client.Client.RemoteEndPoint;
+                    MessageReceived?.Invoke(message, endPoint as IPEndPoint);
+                    AddEndPoints(endPoint);
                 }
                 catch (SocketException)
                 {

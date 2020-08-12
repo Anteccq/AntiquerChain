@@ -25,4 +25,18 @@ namespace AntiquerChain.Network
             };
         }
     }
+
+    public class AddrPayload
+    {
+        public List<IPEndPoint> KnownIpEndPoints { get; set; }
+
+        public static Message CreateMessage(List<IPEndPoint> ipEndPoints)
+        {
+            return new Message()
+            {
+                Type = MessageType.Addr,
+                Payload = JsonSerializer.Serialize(new AddrPayload() { KnownIpEndPoints = ipEndPoints })
+            };
+        }
+    }
 }
