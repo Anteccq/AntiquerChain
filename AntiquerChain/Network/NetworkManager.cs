@@ -63,10 +63,25 @@ namespace AntiquerChain.Network
             var addrMsg = AddrPayload.CreateMessage(_server.ConnectingEndPoints);
             foreach (var ep in _server.ConnectingEndPoints)
             {
-                using var client = new TcpClient(AddressFamily.InterNetwork);
-                await client.ConnectAsync(ep.Address, Server.SERVER_PORT);
+                await SendMessageAsync(ep, addrMsg);
+            }
+        }
+
+        public async Task ConnectAsync(IPEndPoint endPoint) =>
+            await SendMessageAsync(endPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
+
+        static async Task SendMessageAsync(IPEndPoint endPoint, Message message)
+        {
+            using var client = new TcpClient();
+            try
+            {
+                await client.ConnectAsync(endPoint.Address, Server.SERVER_PORT);
                 await using var stream = client.GetStream();
-                await JsonSerializer.SerializeAsync(stream, addrMsg);
+                await JsonSerializer.SerializeAsync(stream, message);
+            }
+            finally
+            {
+                //log
             }
         }
 
