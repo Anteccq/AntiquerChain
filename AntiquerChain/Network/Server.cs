@@ -20,7 +20,7 @@ namespace AntiquerChain.Network
         private Task _listenTask;
 
         public event Func<Message, IPEndPoint, Task> MessageReceived;
-        public event Action<IPEndPoint> NewConnection;
+        public event Func<IPEndPoint, Task> NewConnection;
         public List<IPEndPoint> ConnectingEndPoints { get; set; } = new List<IPEndPoint>();
 
         public Server( CancellationTokenSource tokenSource)
@@ -30,13 +30,13 @@ namespace AntiquerChain.Network
             Token = tokenSource.Token;
         }
 
-        public void Start()
+        public async Task StartAsync()
         {
             _logger.LogInformation("Start Listening...");
-            var endPoint = IPEndPoint.Parse($"0.0.0.0:{SERVER_PORT}");
+            var endPoint = IPEndPoint.Parse($"127.0.0.1:{SERVER_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
-            AddEndPoints(_listener.LocalEndpoint);
+            await AddEndPoints(_listener.LocalEndpoint);
             _listenTask = ConnectionWaitAsync();
         }
 
@@ -55,7 +55,7 @@ namespace AntiquerChain.Network
                     var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
                     var endPoint = client.Client.RemoteEndPoint;
                     await (MessageReceived?.Invoke(message, endPoint as IPEndPoint) ?? Task.CompletedTask);
-                    AddEndPoints(endPoint);
+                    await AddEndPoints(endPoint);
                 }
                 catch (SocketException e)
                 {
@@ -65,15 +65,15 @@ namespace AntiquerChain.Network
             _listener.Stop();
         }
 
-        public void AddEndPoints(EndPoint endPoint)
+        public async Task AddEndPoints(EndPoint endPoint)
         {
             if(!(endPoint is IPEndPoint ipEndPoint)) return;
             lock (ConnectingEndPoints)
             {
                 if(ConnectingEndPoints.Contains(ipEndPoint)) return;
                 ConnectingEndPoints.Add(ipEndPoint);
-                NewConnection?.Invoke(ipEndPoint);
             }
+            await (NewConnection?.Invoke(ipEndPoint) ?? Task.CompletedTask);
             _logger.LogInformation($"New Connection from {ipEndPoint}");
         }
 
