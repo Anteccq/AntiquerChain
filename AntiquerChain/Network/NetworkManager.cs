@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Utf8Json;
 
 namespace AntiquerChain.Network
@@ -13,6 +14,7 @@ namespace AntiquerChain.Network
     public class NetworkManager
     {
         private Server _server;
+        private ILogger _logger = Logging.Create<NetworkManager>();
 
         public NetworkManager()
         {
@@ -32,6 +34,7 @@ namespace AntiquerChain.Network
 
         Task MessageHandle(Message msg, IPEndPoint endPoint)
         {
+            _logger.LogInformation($"Message has arrived from {endPoint}");
             return msg.Type switch
             {
                 MessageType.HandShake => HandShakeHandle(JsonSerializer.Deserialize<HandShake>(msg.Payload), endPoint),
@@ -59,6 +62,7 @@ namespace AntiquerChain.Network
 
         async Task BroadcastEndPointsAsync()
         {
+            _logger.LogInformation("Broadcast EndPoints...");
             if (_server.ConnectingEndPoints is null) return;
             var addrMsg = AddrPayload.CreateMessage(_server.ConnectingEndPoints);
             foreach (var ep in _server.ConnectingEndPoints)
