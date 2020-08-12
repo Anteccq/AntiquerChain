@@ -11,7 +11,7 @@ using Utf8Json;
 
 namespace AntiquerChain.Network
 {
-    public class NetworkManager : IDisposable
+    public class NetworkManager
     {
         private Server _server;
         private ILogger _logger = Logging.Create<NetworkManager>();
@@ -100,7 +100,5 @@ namespace AntiquerChain.Network
             var listBstr = listB.Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
             return listBstr.SequenceEqual(listAstr);
         }
-
-        public void Dispose() => _server.Dispose();
     }
 }
