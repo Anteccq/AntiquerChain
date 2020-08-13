@@ -54,7 +54,10 @@ namespace AntiquerChain.Network
         async Task HandShakeHandle(HandShake msg, IPEndPoint endPoint)
         {
             if(!CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
-            _server.ConnectingEndPoints = _server.ConnectingEndPoints.Union(msg.KnownIpEndPoints) as List<IPEndPoint>;
+            lock (_server.ConnectingEndPoints)
+            {
+                _server.ConnectingEndPoints = _server.ConnectingEndPoints.Union(msg.KnownIpEndPoints).ToList();
+            }
             await BroadcastEndPointsAsync();
         }
 
