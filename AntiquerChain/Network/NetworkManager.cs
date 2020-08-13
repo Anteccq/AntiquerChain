@@ -53,15 +53,21 @@ namespace AntiquerChain.Network
 
         async Task HandShakeHandle(HandShake msg, IPEndPoint endPoint)
         {
-            if(!CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
-            _server.ConnectingEndPoints = _server.ConnectingEndPoints.Union(msg.KnownIpEndPoints) as List<IPEndPoint>;
+            if(CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
+            lock (_server.ConnectingEndPoints)
+            {
+                _server.ConnectingEndPoints = UnionEndpoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints);
+            }
             await BroadcastEndPointsAsync();
         }
 
         async Task AddrHandle(AddrPayload msg, IPEndPoint endPoint)
         {
             if (!CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
-            _server.ConnectingEndPoints = _server.ConnectingEndPoints.Union(msg.KnownIpEndPoints) as List<IPEndPoint>;
+            lock (_server.ConnectingEndPoints)
+            {
+                _server.ConnectingEndPoints = UnionEndpoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints);
+            }
             await BroadcastEndPointsAsync();
         }
 
@@ -74,6 +80,11 @@ namespace AntiquerChain.Network
             {
                 await SendMessageAsync(ep, addrMsg);
             }
+        }
+
+        static List<IPEndPoint> UnionEndpoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
+        {
+            return listA.Union(listB).DistinctByAddress().ToList();
         }
 
         public async Task ConnectAsync(IPEndPoint endPoint) =>
@@ -96,8 +107,8 @@ namespace AntiquerChain.Network
 
         static bool CompareIpEndPoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
         {
-            var listAstr = listA.Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
-            var listBstr = listB.Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
+            var listAstr = listA.DistinctByAddress().Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
+            var listBstr = listB.DistinctByAddress().Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
             return listBstr.SequenceEqual(listAstr);
         }
     }

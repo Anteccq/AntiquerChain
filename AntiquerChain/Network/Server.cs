@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -44,24 +45,28 @@ namespace AntiquerChain.Network
         {
             _logger.LogInformation("Connect Waiting");
             if (_listener is null) return;
-
-            while (!Token.IsCancellationRequested)
+            var tcs = new TaskCompletionSource<int>();
+            await using (Token.Register(tcs.SetCanceled))
             {
-                var t = _listener.AcceptTcpClientAsync();
-                if ( t.IsCanceled ) break;
-                try
+                while (!Token.IsCancellationRequested)
                 {
-                    using var client = t.Result;
-                    var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
-                    var endPoint = client.Client.RemoteEndPoint;
-                    await (MessageReceived?.Invoke(message, endPoint as IPEndPoint) ?? Task.CompletedTask);
-                    await AddEndPoints(endPoint);
-                }
-                catch (SocketException e)
-                {
-                    _logger.LogError("Error on ConnectionWaiting.", e);
+                    var t = _listener.AcceptTcpClientAsync();
+                    if ((await Task.WhenAny(t,tcs.Task)).IsCanceled) break;
+                    try
+                    {
+                        using var client = t.Result;
+                        var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
+                        var endPoint = client.Client.RemoteEndPoint;
+                        await (MessageReceived?.Invoke(message, endPoint as IPEndPoint) ?? Task.CompletedTask);
+                        await AddEndPoints(endPoint);
+                    }
+                    catch (SocketException e)
+                    {
+                        _logger.LogError("Error on ConnectionWaiting.", e);
+                    }
                 }
             }
+            _logger.LogInformation("ちゅうぶらりん");
             _listener.Stop();
         }
 
@@ -70,7 +75,7 @@ namespace AntiquerChain.Network
             if(!(endPoint is IPEndPoint ipEndPoint)) return;
             lock (ConnectingEndPoints)
             {
-                if(ConnectingEndPoints.Contains(ipEndPoint)) return;
+                if(ConnectingEndPoints.Any(x => Equals(x.Address, ipEndPoint.Address))) return;
                 ConnectingEndPoints.Add(ipEndPoint);
             }
             await (NewConnection?.Invoke(ipEndPoint) ?? Task.CompletedTask);
@@ -81,7 +86,8 @@ namespace AntiquerChain.Network
         {
             _logger.LogInformation("Stop listening...");
             ConnectingEndPoints?.Clear();
-            if(TokenSource is null) return;
+            _logger.LogInformation("Clear");
+            if (TokenSource is null) return;
             TokenSource.Cancel();
             TokenSource.Dispose();
             TokenSource = null;

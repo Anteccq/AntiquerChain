@@ -21,7 +21,7 @@ namespace AntiquerChain
             }
             var manager = new NetworkManager(Context.CancellationToken);
             await manager.StartServerAsync();
-            var t = Task.Run(async () => await manager.ConnectAsync(ipEndPoint));
+            var t = Task.Run(async () => await manager.ConnectAsync(ipEndPoint), Context.CancellationToken);
 
             Console.ReadLine();
             Console.WriteLine("終了");
