@@ -63,7 +63,7 @@ namespace AntiquerChain.Network
 
         async Task AddrHandle(AddrPayload msg, IPEndPoint endPoint)
         {
-            if (!CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
+            if (CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
             lock (_server.ConnectingEndPoints)
             {
                 _server.ConnectingEndPoints = UnionEndpoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints);

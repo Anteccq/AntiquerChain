@@ -66,7 +66,6 @@ namespace AntiquerChain.Network
                     }
                 }
             }
-            _logger.LogInformation("ちゅうぶらりん");
             _listener.Stop();
         }
 
@@ -86,7 +85,6 @@ namespace AntiquerChain.Network
         {
             _logger.LogInformation("Stop listening...");
             ConnectingEndPoints?.Clear();
-            _logger.LogInformation("Clear");
             if (TokenSource is null) return;
             TokenSource.Cancel();
             TokenSource.Dispose();
