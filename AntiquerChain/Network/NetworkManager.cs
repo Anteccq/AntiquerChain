@@ -15,6 +15,7 @@ namespace AntiquerChain.Network
     {
         private Server _server;
         private ILogger _logger = Logging.Create<NetworkManager>();
+        private Timer _timer;
 
         public NetworkManager(CancellationToken token)
         {
@@ -22,6 +23,9 @@ namespace AntiquerChain.Network
             _server = new Server(tokenSource);
             _server.NewConnection += NewConnection;
             _server.MessageReceived += MessageHandle;
+            _timer = new Timer(async _ => await AllConnectionCheckAsync(), null,
+                TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            token.Register(_timer.Dispose);
             token.Register(_server.Dispose);
         }
 
@@ -30,16 +34,20 @@ namespace AntiquerChain.Network
         async Task NewConnection(IPEndPoint ipEndPoint)
         {
             Console.WriteLine($"{ipEndPoint}");
-            using var client = new TcpClient(AddressFamily.InterNetwork);
-            await client.ConnectAsync(ipEndPoint.Address, Server.SERVER_PORT);
-            await using var stream = client.GetStream();
-            var d =JsonSerializer.Serialize(HandShake.CreateMessage(_server.ConnectingEndPoints));
-            await stream.WriteAsync(d, 0, d.Length);
+            try
+            {
+                await SendMessageAsync(ipEndPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
+            }
+            catch (SocketException)
+            {
+                RemoveEndPoint(ipEndPoint);
+                await BroadcastEndPointsAsync();
+            }
         }
 
         Task MessageHandle(Message msg, IPEndPoint endPoint)
         {
-            _logger.LogInformation($"Message has arrived from {endPoint}");
+            _logger.LogInformation($"Message has arrived from {endPoint} : MSG_TYPE: {msg.Type} : {DateTime.Now:ss.FFFF}");
             return msg.Type switch
             {
                 MessageType.HandShake => HandShakeHandle(JsonSerializer.Deserialize<HandShake>(msg.Payload), endPoint),
@@ -73,13 +81,21 @@ namespace AntiquerChain.Network
 
         async Task BroadcastEndPointsAsync()
         {
-            _logger.LogInformation("Broadcast EndPoints...");
             if (_server.ConnectingEndPoints is null) return;
+            _logger.LogInformation($"Broadcast EndPoints to {_server.ConnectingEndPoints.Count}");
             var addrMsg = AddrPayload.CreateMessage(_server.ConnectingEndPoints);
+            var disconnectedList = new List<IPEndPoint>();
             foreach (var ep in _server.ConnectingEndPoints)
             {
-                await SendMessageAsync(ep, addrMsg);
+                try { await SendMessageAsync(ep, addrMsg); }
+                catch(SocketException)
+                {
+                    disconnectedList.Add(ep);
+                }
             }
+            if(disconnectedList.Count == 0) return;
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep);
+            await BroadcastEndPointsAsync();
         }
 
         static List<IPEndPoint> UnionEndpoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
@@ -87,22 +103,54 @@ namespace AntiquerChain.Network
             return listA.Union(listB).DistinctByAddress().ToList();
         }
 
-        public async Task ConnectAsync(IPEndPoint endPoint) =>
-            await SendMessageAsync(endPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
-
-        static async Task SendMessageAsync(IPEndPoint endPoint, Message message)
+        public async Task ConnectAsync(IPEndPoint endPoint)
         {
-            using var client = new TcpClient();
             try
             {
-                await client.ConnectAsync(endPoint.Address, Server.SERVER_PORT);
-                await using var stream = client.GetStream();
-                await JsonSerializer.SerializeAsync(stream, message);
+                await SendMessageAsync(endPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
             }
-            finally
+            catch (SocketException)
             {
-                //log
+                _logger.LogInformation($"{endPoint}: No response");
             }
+        }
+
+        async Task AllConnectionCheckAsync()
+        {
+            if(_server.ConnectingEndPoints.Count == 0) return;
+            var msg = Ping.CreateMessage();
+            var disconnectedList = new List<IPEndPoint>();
+            foreach (var ep in _server.ConnectingEndPoints)
+            {
+                try { await SendMessageAsync(ep, msg); }
+                catch (SocketException)
+                {
+                    disconnectedList.Add(ep);
+                }
+            }
+            if (disconnectedList.Count == 0) return;
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep);
+            await BroadcastEndPointsAsync();
+        }
+        
+        async Task SendMessageAsync(IPEndPoint endPoint, Message message)
+        {
+            using var client = new TcpClient();
+            await client.ConnectAsync(endPoint.Address, Server.SERVER_PORT);
+            await using var stream = client.GetStream();
+            await JsonSerializer.SerializeAsync(stream, message);
+        }
+
+        private void RemoveEndPoint(IPEndPoint endPoint)
+        {
+            var peers = _server.ConnectingEndPoints;
+            lock (peers)
+            {
+                var index = peers.FindIndex(peer => Equals(peer.Address, endPoint.Address));
+                if(index < 0) return;
+                peers.RemoveAt(index);
+            }
+            _logger.LogInformation($"Disconnected : {endPoint.Address}");
         }
 
         static bool CompareIpEndPoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)

@@ -39,4 +39,16 @@ namespace AntiquerChain.Network
             };
         }
     }
+
+    public class Ping
+    {
+        public static Message CreateMessage()
+        {
+            return new Message()
+            {
+                Type = MessageType.Ping,
+                Payload = new byte[] {0}
+            };
+        }
+    }
 }
