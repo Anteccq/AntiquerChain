@@ -30,7 +30,14 @@ namespace AntiquerChain.Network
         async Task NewConnection(IPEndPoint ipEndPoint)
         {
             Console.WriteLine($"{ipEndPoint}");
-            await SendMessageAsync(ipEndPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
+            try
+            {
+                await SendMessageAsync(ipEndPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
+            }
+            catch (SocketException)
+            {
+                await RemoveEndPointAsync(ipEndPoint);
+            }
         }
 
         Task MessageHandle(Message msg, IPEndPoint endPoint)
@@ -72,10 +79,17 @@ namespace AntiquerChain.Network
             _logger.LogInformation("Broadcast EndPoints...");
             if (_server.ConnectingEndPoints is null) return;
             var addrMsg = AddrPayload.CreateMessage(_server.ConnectingEndPoints);
+            var disconnectedList = new List<IPEndPoint>();
             foreach (var ep in _server.ConnectingEndPoints)
             {
-                await SendMessageAsync(ep, addrMsg);
+                try { await SendMessageAsync(ep, addrMsg); }
+                catch(SocketException)
+                {
+                    disconnectedList.Add(ep);
+                }
             }
+
+            foreach (var ep in disconnectedList) await RemoveEndPointAsync(ep);
         }
 
         static List<IPEndPoint> UnionEndpoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
@@ -83,23 +97,24 @@ namespace AntiquerChain.Network
             return listA.Union(listB).DistinctByAddress().ToList();
         }
 
-        public async Task ConnectAsync(IPEndPoint endPoint) =>
-            await SendMessageAsync(endPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
+        public async Task ConnectAsync(IPEndPoint endPoint)
+        {
+            try
+            {
+                await SendMessageAsync(endPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
+            }
+            catch (SocketException)
+            {
+                _logger.LogInformation($"{endPoint}: No response");
+            }
+        }
 
         async Task SendMessageAsync(IPEndPoint endPoint, Message message)
         {
             using var client = new TcpClient();
-            try
-            {
-                await client.ConnectAsync(endPoint.Address, Server.SERVER_PORT);
-                await using var stream = client.GetStream();
-                await JsonSerializer.SerializeAsync(stream, message);
-            }
-            catch(SocketException e)
-            {
-                _logger.LogError("Connection Error", e);
-                await RemoveEndPointAsync(endPoint);
-            }
+            await client.ConnectAsync(endPoint.Address, Server.SERVER_PORT);
+            await using var stream = client.GetStream();
+            await JsonSerializer.SerializeAsync(stream, message);
         }
 
         private async Task RemoveEndPointAsync(IPEndPoint endPoint)
@@ -111,7 +126,7 @@ namespace AntiquerChain.Network
                 if(index < 0) return;
                 peers.RemoveAt(index);
             }
-
+            _logger.LogInformation($"Disconnected : {endPoint.Address}");
             await BroadcastEndPointsAsync();
         }
 
