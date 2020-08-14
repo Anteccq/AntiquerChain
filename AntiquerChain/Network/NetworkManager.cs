@@ -30,11 +30,7 @@ namespace AntiquerChain.Network
         async Task NewConnection(IPEndPoint ipEndPoint)
         {
             Console.WriteLine($"{ipEndPoint}");
-            using var client = new TcpClient(AddressFamily.InterNetwork);
-            await client.ConnectAsync(ipEndPoint.Address, Server.SERVER_PORT);
-            await using var stream = client.GetStream();
-            var d =JsonSerializer.Serialize(HandShake.CreateMessage(_server.ConnectingEndPoints));
-            await stream.WriteAsync(d, 0, d.Length);
+            await SendMessageAsync(ipEndPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
         }
 
         Task MessageHandle(Message msg, IPEndPoint endPoint)
@@ -90,7 +86,7 @@ namespace AntiquerChain.Network
         public async Task ConnectAsync(IPEndPoint endPoint) =>
             await SendMessageAsync(endPoint, HandShake.CreateMessage(_server.ConnectingEndPoints));
 
-        static async Task SendMessageAsync(IPEndPoint endPoint, Message message)
+        async Task SendMessageAsync(IPEndPoint endPoint, Message message)
         {
             using var client = new TcpClient();
             try
@@ -99,10 +95,24 @@ namespace AntiquerChain.Network
                 await using var stream = client.GetStream();
                 await JsonSerializer.SerializeAsync(stream, message);
             }
-            finally
+            catch(SocketException e)
             {
-                //log
+                _logger.LogError("Connection Error", e);
+                await RemoveEndPointAsync(endPoint);
             }
+        }
+
+        private async Task RemoveEndPointAsync(IPEndPoint endPoint)
+        {
+            var peers = _server.ConnectingEndPoints;
+            lock (peers)
+            {
+                var index = peers.FindIndex(peer => Equals(peer.Address, endPoint.Address));
+                if(index < 0) return;
+                peers.RemoveAt(index);
+            }
+
+            await BroadcastEndPointsAsync();
         }
 
         static bool CompareIpEndPoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
