@@ -36,7 +36,8 @@ namespace AntiquerChain.Network
             }
             catch (SocketException)
             {
-                await RemoveEndPointAsync(ipEndPoint);
+                RemoveEndPoint(ipEndPoint);
+                await BroadcastEndPointsAsync();
             }
         }
 
@@ -88,8 +89,9 @@ namespace AntiquerChain.Network
                     disconnectedList.Add(ep);
                 }
             }
-
-            foreach (var ep in disconnectedList) await RemoveEndPointAsync(ep);
+            if(disconnectedList.Count == 0) return;
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep);
+            await BroadcastEndPointsAsync();
         }
 
         static List<IPEndPoint> UnionEndpoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
@@ -117,7 +119,7 @@ namespace AntiquerChain.Network
             await JsonSerializer.SerializeAsync(stream, message);
         }
 
-        private async Task RemoveEndPointAsync(IPEndPoint endPoint)
+        private void RemoveEndPoint(IPEndPoint endPoint)
         {
             var peers = _server.ConnectingEndPoints;
             lock (peers)
@@ -127,7 +129,6 @@ namespace AntiquerChain.Network
                 peers.RemoveAt(index);
             }
             _logger.LogInformation($"Disconnected : {endPoint.Address}");
-            await BroadcastEndPointsAsync();
         }
 
         static bool CompareIpEndPoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)
