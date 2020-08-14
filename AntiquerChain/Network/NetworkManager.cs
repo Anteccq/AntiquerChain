@@ -15,6 +15,7 @@ namespace AntiquerChain.Network
     {
         private Server _server;
         private ILogger _logger = Logging.Create<NetworkManager>();
+        private Timer _timer;
 
         public NetworkManager(CancellationToken token)
         {
@@ -22,6 +23,9 @@ namespace AntiquerChain.Network
             _server = new Server(tokenSource);
             _server.NewConnection += NewConnection;
             _server.MessageReceived += MessageHandle;
+            _timer = new Timer(async _ => await AllConnectionCheckAsync(), null,
+                TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            token.Register(_timer.Dispose);
             token.Register(_server.Dispose);
         }
 
@@ -43,7 +47,7 @@ namespace AntiquerChain.Network
 
         Task MessageHandle(Message msg, IPEndPoint endPoint)
         {
-            _logger.LogInformation($"Message has arrived from {endPoint}");
+            _logger.LogInformation($"Message has arrived from {endPoint} : MSG_TYPE: {msg.Type} : {DateTime.Now:ss.FFFF}");
             return msg.Type switch
             {
                 MessageType.HandShake => HandShakeHandle(JsonSerializer.Deserialize<HandShake>(msg.Payload), endPoint),
@@ -77,8 +81,8 @@ namespace AntiquerChain.Network
 
         async Task BroadcastEndPointsAsync()
         {
-            _logger.LogInformation("Broadcast EndPoints...");
             if (_server.ConnectingEndPoints is null) return;
+            _logger.LogInformation($"Broadcast EndPoints to {_server.ConnectingEndPoints.Count}");
             var addrMsg = AddrPayload.CreateMessage(_server.ConnectingEndPoints);
             var disconnectedList = new List<IPEndPoint>();
             foreach (var ep in _server.ConnectingEndPoints)
@@ -111,6 +115,24 @@ namespace AntiquerChain.Network
             }
         }
 
+        async Task AllConnectionCheckAsync()
+        {
+            if(_server.ConnectingEndPoints.Count == 0) return;
+            var msg = Ping.CreateMessage();
+            var disconnectedList = new List<IPEndPoint>();
+            foreach (var ep in _server.ConnectingEndPoints)
+            {
+                try { await SendMessageAsync(ep, msg); }
+                catch (SocketException)
+                {
+                    disconnectedList.Add(ep);
+                }
+            }
+            if (disconnectedList.Count == 0) return;
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep);
+            await BroadcastEndPointsAsync();
+        }
+        
         async Task SendMessageAsync(IPEndPoint endPoint, Message message)
         {
             using var client = new TcpClient();
