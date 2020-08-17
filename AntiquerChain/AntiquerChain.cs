@@ -22,6 +22,9 @@ namespace AntiquerChain
             var manager = new NetworkManager(Context.CancellationToken);
             await manager.StartServerAsync();
             var t = Task.Run(async () => await manager.ConnectAsync(ipEndPoint), Context.CancellationToken);
+            var surfaceManager = new SurfaceManager(Context.CancellationToken);
+            surfaceManager.StartSurface();
+            var tt = Task.Run(async () => await surfaceManager.ConnectServerAsync(ipEndPoint), Context.CancellationToken);
 
             Console.ReadLine();
         }
