@@ -18,7 +18,7 @@ namespace AntiquerChain.Network
         private Timer _timer;
         private readonly CancellationToken _token;
 
-        public SurfaceManager(CancellationToken token, IPEndPoint endPoint)
+        public SurfaceManager(CancellationToken token)
         {
             _token = token;
             var tokenSource = new CancellationTokenSource();
