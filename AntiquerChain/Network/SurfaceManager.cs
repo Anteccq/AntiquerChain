@@ -24,6 +24,7 @@ namespace AntiquerChain.Network
             var tokenSource = new CancellationTokenSource();
             _surface = new Surface(tokenSource);
             _surface.MessageReceived += MessageHandle;
+            _token.Register(_surface.Dispose);
         }
 
         public void StartSurface() => _surface.Start();
