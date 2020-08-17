@@ -26,7 +26,7 @@ namespace AntiquerChain.Network
             _surface.MessageReceived += MessageHandle;
         }
 
-        public async Task StartSurfaceAsync() => await (_surface?.StartAsync() ?? Task.CompletedTask);
+        public void StartSurface() => _surface.Start();
 
         async Task ConnectionCheckAsync()
         {
