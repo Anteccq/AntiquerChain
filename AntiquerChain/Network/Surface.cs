@@ -13,7 +13,6 @@ namespace AntiquerChain.Network
 {
     public class Surface : IDisposable
     {
-        public const int SURFACE_PORT = 50152;
         private ILogger _logger = Logging.Create<Surface>();
         private TcpListener _listener;
         public CancellationTokenSource TokenSource { get; set; }
@@ -32,7 +31,7 @@ namespace AntiquerChain.Network
         public void Start()
         {
             _logger.LogInformation("Start Listening...");
-            var endPoint = IPEndPoint.Parse($"127.0.0.1:{SURFACE_PORT}");
+            var endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkConstant.SURFACE_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
             _listenTask = ConnectionWaitAsync();
