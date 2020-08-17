@@ -25,14 +25,14 @@ namespace AntiquerChain.Network
 
         public Server( CancellationTokenSource tokenSource)
         {
-            _logger.LogInformation("Server Initializing...");
+            _logger.LogInformation("Server: Server Initialization.");
             TokenSource = tokenSource;
             Token = tokenSource.Token;
         }
 
         public async Task StartAsync()
         {
-            _logger.LogInformation("Start Listening...");
+            _logger.LogInformation("Server: Start Listening...");
             var endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkConstant.SERVER_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
@@ -42,7 +42,7 @@ namespace AntiquerChain.Network
 
         async Task ConnectionWaitAsync()
         {
-            _logger.LogInformation("Connect Waiting");
+            _logger.LogInformation("Server: Waiting for connection");
             if (_listener is null) return;
             var tcs = new TaskCompletionSource<int>();
             await using (Token.Register(tcs.SetCanceled))
@@ -61,7 +61,7 @@ namespace AntiquerChain.Network
                     }
                     catch (SocketException e)
                     {
-                        _logger.LogError("Error on ConnectionWaiting.", e);
+                        _logger.LogError("Server: Error on ConnectionWaiting.", e);
                     }
                 }
             }
@@ -77,12 +77,12 @@ namespace AntiquerChain.Network
                 ConnectingEndPoints.Add(ipEndPoint);
             }
             await (NewConnection?.Invoke(ipEndPoint) ?? Task.CompletedTask);
-            _logger.LogInformation($"New Connection from {ipEndPoint}");
+            _logger.LogInformation($"Server: New Connection from {ipEndPoint}");
         }
 
         public void Dispose()
         {
-            _logger.LogInformation("Stop listening...");
+            _logger.LogInformation("Server: Stop listening...");
             ConnectingEndPoints?.Clear();
             if (TokenSource is null) return;
             TokenSource.Cancel();

@@ -32,21 +32,21 @@ namespace AntiquerChain.Network
 
         async Task ConnectionCheckAsync()
         {
-            _logger.LogInformation("Connection checking..");
+            _logger.LogInformation("Surface: Connection checking..");
             try
             {
                 await SendMessageAsync(_serverEndPoint, Ping.CreateMessage());
             }
             catch (SocketException)
             {
-                _logger.LogInformation($"{_serverEndPoint} : Couldn't connect to the server..");
+                _logger.LogInformation($"Surface: {_serverEndPoint} > Couldn't connect to the server..");
                 _serverEndPoint = null;
             }
         }
 
         Task MessageHandle(Message msg)
         {
-            _logger.LogInformation($"Message has arrived. MSG_TYPE: {msg.Type} : {DateTime.Now:ss.FFFF}");
+            _logger.LogInformation($"Surface: Message has arrived. MSG_TYPE: {msg.Type} : {DateTime.Now:ss.FFFF}");
             return Task.CompletedTask;
         }
         public async Task ConnectServerAsync(IPEndPoint serverEndPoint)
@@ -61,7 +61,7 @@ namespace AntiquerChain.Network
             }
             catch (SocketException)
             {
-                _logger.LogInformation($"{_serverEndPoint}: No response");
+                _logger.LogInformation($"Surface: {_serverEndPoint} > No response");
             }
         }
     }

@@ -48,7 +48,7 @@ namespace AntiquerChain.Network
 
         Task MessageHandle(Message msg, IPEndPoint endPoint)
         {
-            _logger.LogInformation($"Message has arrived from {endPoint} : MSG_TYPE: {msg.Type} : {DateTime.Now:ss.FFFF}");
+            _logger.LogInformation($"Server: Message has arrived from {endPoint} : MSG_TYPE: {msg.Type} : {DateTime.Now:ss.FFFF}");
             return msg.Type switch
             {
                 MessageType.HandShake => HandShakeHandle(JsonSerializer.Deserialize<HandShake>(msg.Payload), endPoint),
@@ -83,13 +83,13 @@ namespace AntiquerChain.Network
 
         async Task SurfaceHandShakeHandle(IPEndPoint endPoint)
         {
-            _logger.LogInformation($"Surface is connected from {endPoint}");
+            _logger.LogInformation($"Server: Surface is connected from {endPoint}");
         }
 
         async Task BroadcastEndPointsAsync()
         {
             if (_server.ConnectingEndPoints is null) return;
-            _logger.LogInformation($"Broadcast EndPoints to {_server.ConnectingEndPoints.Count}");
+            _logger.LogInformation($"Server: Broadcast EndPoints to {_server.ConnectingEndPoints.Count}");
             var addrMsg = AddrPayload.CreateMessage(_server.ConnectingEndPoints);
             var disconnectedList = new List<IPEndPoint>();
             foreach (var ep in _server.ConnectingEndPoints)
@@ -118,7 +118,7 @@ namespace AntiquerChain.Network
             }
             catch (SocketException)
             {
-                _logger.LogInformation($"{endPoint}: No response");
+                _logger.LogInformation($"Server: {endPoint} > No response");
             }
         }
 
@@ -149,7 +149,7 @@ namespace AntiquerChain.Network
                 if(index < 0) return;
                 peers.RemoveAt(index);
             }
-            _logger.LogInformation($"Disconnected : {endPoint.Address}");
+            _logger.LogInformation($"Server: Disconnected > {endPoint.Address}");
         }
 
         static bool CompareIpEndPoints(IEnumerable<IPEndPoint> listA, IEnumerable<IPEndPoint> listB)

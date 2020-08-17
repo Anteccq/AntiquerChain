@@ -23,14 +23,14 @@ namespace AntiquerChain.Network
 
         public Surface(CancellationTokenSource cts)
         {
-            _logger.LogInformation("Surface Initializing...");
+            _logger.LogInformation("Surface: Surface Initialization");
             TokenSource = cts;
             Token = cts.Token;
         }
 
         public void Start()
         {
-            _logger.LogInformation("Start Listening...");
+            _logger.LogInformation("Surface: Start Listening...");
             var endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkConstant.SURFACE_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
@@ -39,7 +39,7 @@ namespace AntiquerChain.Network
 
         async Task ConnectionWaitAsync()
         {
-            _logger.LogInformation("Connect Waiting");
+            _logger.LogInformation("Surface: Waiting for Connection");
             if (_listener is null) return;
             var tcs = new TaskCompletionSource<int>();
             await using (Token.Register(tcs.SetCanceled))
@@ -57,7 +57,7 @@ namespace AntiquerChain.Network
                     }
                     catch (SocketException e)
                     {
-                        _logger.LogError("Error on ConnectionWaiting.", e);
+                        _logger.LogError("Surface: Error on ConnectionWaiting.", e);
                     }
                 }
             }
@@ -66,7 +66,7 @@ namespace AntiquerChain.Network
 
         public void Dispose()
         {
-            _logger.LogInformation("Stop listening...");
+            _logger.LogInformation("Surface: Stop listening...");
             if (TokenSource is null) return;
             TokenSource.Cancel();
             TokenSource.Dispose();
