@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Utf8Json;
+using static AntiquerChain.Network.Util.Messenger;
 
 namespace AntiquerChain.Network
 {
@@ -62,15 +63,6 @@ namespace AntiquerChain.Network
             {
                 _logger.LogInformation($"{_serverEndPoint}: No response");
             }
-        }
-
-        //後にNetworkManager.csの同メソッドと統合します。
-        async Task SendMessageAsync(IPEndPoint endPoint, Message message)
-        {
-            using var client = new TcpClient();
-            await client.ConnectAsync(endPoint.Address, Surface.SURFACE_PORT);
-            await using var stream = client.GetStream();
-            await JsonSerializer.SerializeAsync(stream, message);
         }
     }
 }

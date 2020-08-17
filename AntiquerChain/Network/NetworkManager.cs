@@ -37,7 +37,7 @@ namespace AntiquerChain.Network
             Console.WriteLine($"{ipEndPoint}");
             try
             {
-                await SendMessageAsync(ipEndPoint.Address, NetworkContext.SERVER_PORT, HandShake.CreateMessage(_server.ConnectingEndPoints));
+                await SendMessageAsync(ipEndPoint.Address, NetworkConstant.SERVER_PORT, HandShake.CreateMessage(_server.ConnectingEndPoints));
             }
             catch (SocketException)
             {
@@ -94,7 +94,7 @@ namespace AntiquerChain.Network
             var disconnectedList = new List<IPEndPoint>();
             foreach (var ep in _server.ConnectingEndPoints)
             {
-                try { await SendMessageAsync(ep.Address, NetworkContext.SERVER_PORT, addrMsg); }
+                try { await SendMessageAsync(ep.Address, NetworkConstant.SERVER_PORT, addrMsg); }
                 catch(SocketException)
                 {
                     disconnectedList.Add(ep);
@@ -114,7 +114,7 @@ namespace AntiquerChain.Network
         {
             try
             {
-                await SendMessageAsync(endPoint.Address, NetworkContext.SERVER_PORT, HandShake.CreateMessage(_server.ConnectingEndPoints));
+                await SendMessageAsync(endPoint.Address, NetworkConstant.SERVER_PORT, HandShake.CreateMessage(_server.ConnectingEndPoints));
             }
             catch (SocketException)
             {
@@ -129,7 +129,7 @@ namespace AntiquerChain.Network
             var disconnectedList = new List<IPEndPoint>();
             foreach (var ep in _server.ConnectingEndPoints)
             {
-                try { await SendMessageAsync(ep.Address, NetworkContext.SERVER_PORT, msg); }
+                try { await SendMessageAsync(ep.Address, NetworkConstant.SERVER_PORT, msg); }
                 catch (SocketException)
                 {
                     disconnectedList.Add(ep);

@@ -13,7 +13,6 @@ namespace AntiquerChain.Network
 {
     public class Server : IDisposable
     {
-        public const int SERVER_PORT = 50151;
         private ILogger _logger = Logging.Create<Server>();
         private TcpListener _listener;
         public CancellationTokenSource TokenSource { get; set; }
@@ -34,7 +33,7 @@ namespace AntiquerChain.Network
         public async Task StartAsync()
         {
             _logger.LogInformation("Start Listening...");
-            var endPoint = IPEndPoint.Parse($"127.0.0.1:{SERVER_PORT}");
+            var endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkConstant.SERVER_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
             await AddEndPoints(_listener.LocalEndpoint);
