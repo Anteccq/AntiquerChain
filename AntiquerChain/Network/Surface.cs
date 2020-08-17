@@ -21,14 +21,12 @@ namespace AntiquerChain.Network
         private Task _listenTask;
 
         public event Func<Message, Task> MessageReceived;
-        public IPEndPoint ConnectedServer { get; set; }
 
-        public Surface(CancellationTokenSource cts, IPEndPoint ipEndPoint)
+        public Surface(CancellationTokenSource cts)
         {
             _logger.LogInformation("Surface Initializing...");
             TokenSource = cts;
             Token = cts.Token;
-            ConnectedServer = ipEndPoint;
         }
 
         public async Task StartAsync()
