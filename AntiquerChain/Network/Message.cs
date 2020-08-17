@@ -58,7 +58,7 @@ namespace AntiquerChain.Network
         {
             return new Message()
             {
-                Type = MessageType.HandShake,
+                Type = MessageType.SurfaceHandShake,
                 Payload = new byte[] {0}
             };
         }
