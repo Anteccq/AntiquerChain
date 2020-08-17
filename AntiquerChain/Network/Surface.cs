@@ -11,7 +11,7 @@ using Utf8Json;
 
 namespace AntiquerChain.Network
 {
-    public class Surface
+    public class Surface : IDisposable
     {
         public const int SURFACE_PORT = 50152;
         private ILogger _logger = Logging.Create<Surface>();
@@ -63,6 +63,15 @@ namespace AntiquerChain.Network
                 }
             }
             _listener.Stop();
+        }
+
+        public void Dispose()
+        {
+            _logger.LogInformation("Stop listening...");
+            if (TokenSource is null) return;
+            TokenSource.Cancel();
+            TokenSource.Dispose();
+            TokenSource = null;
         }
     }
 }
