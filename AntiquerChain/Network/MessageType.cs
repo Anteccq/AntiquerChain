@@ -10,6 +10,7 @@ namespace AntiquerChain.Network
         Addr,
         Ping,
         Inventory,
-        Notice
+        Notice,
+        SurfaceHandShake
     }
 }
