@@ -55,6 +55,7 @@ namespace AntiquerChain.Network
                 MessageType.Inventory => Task.CompletedTask,
                 MessageType.Notice => Task.CompletedTask,
                 MessageType.Ping => Task.CompletedTask,
+                MessageType.SurfaceHandShake => SurfaceHandShakeHandle(endPoint),
                 _ => Task.CompletedTask
             };
         }
@@ -77,6 +78,11 @@ namespace AntiquerChain.Network
                 _server.ConnectingEndPoints = UnionEndpoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints);
             }
             await BroadcastEndPointsAsync();
+        }
+
+        async Task SurfaceHandShakeHandle(IPEndPoint endPoint)
+        {
+            _logger.LogInformation($"Surface is connected from {endPoint}");
         }
 
         async Task BroadcastEndPointsAsync()

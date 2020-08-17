@@ -51,4 +51,16 @@ namespace AntiquerChain.Network
             };
         }
     }
+
+    public class SurfaceHandShake
+    {
+        public static Message CreateMessage()
+        {
+            return new Message()
+            {
+                Type = MessageType.HandShake,
+                Payload = new byte[] {0}
+            };
+        }
+    }
 }
