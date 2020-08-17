@@ -29,7 +29,7 @@ namespace AntiquerChain.Network
             Token = cts.Token;
         }
 
-        public async Task StartAsync()
+        public void Start()
         {
             _logger.LogInformation("Start Listening...");
             var endPoint = IPEndPoint.Parse($"127.0.0.1:{SURFACE_PORT}");
