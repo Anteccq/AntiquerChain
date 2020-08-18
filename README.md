@@ -10,5 +10,5 @@ Under the MIT
 ConsoleAppFramework Copyright (c) 2020 Cysharp, Inc.  
 [LICENSE](https://github.com/Cysharp/ConsoleAppFramework/blob/master/LICENSE)
 
-Utf8Json Copyright (c) 2017 Yoshifumi Kawai 
+Utf8Json Copyright (c) 2017 Yoshifumi Kawai  
 [LICENSE](https://github.com/neuecc/Utf8Json/blob/master/LICENSE)
