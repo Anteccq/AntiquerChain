@@ -12,7 +12,7 @@ using static AntiquerChain.Network.Util.Messenger;
 
 namespace AntiquerChain.Network
 {
-    public class NetworkManager
+    public class NetworkManager : IDisposable
     {
         private Server _server;
         private ILogger _logger = Logging.Create<NetworkManager>();
@@ -28,13 +28,7 @@ namespace AntiquerChain.Network
             _server.MessageReceived += MessageHandle;
             _timer = new Timer(async _ => await AllConnectionCheckAsync(), null,
                 TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
-            token.Register(_timer.Dispose);
-            token.Register(_server.Dispose);
-            token.Register(() =>
-            {
-                ConnectSurfaces?.Clear();
-                ConnectServers?.Clear();
-            });
+            token.Register(Dispose);
         }
 
         public async Task StartServerAsync() => await (_server?.StartAsync() ?? Task.CompletedTask);
@@ -202,6 +196,14 @@ namespace AntiquerChain.Network
             var listAstr = listA.DistinctByAddress().Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
             var listBstr = listB.DistinctByAddress().Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
             return listBstr.SequenceEqual(listAstr);
+        }
+
+        public void Dispose()
+        {
+            _timer.Dispose();
+            _server.Dispose();
+            ConnectSurfaces?.Clear();
+            ConnectServers?.Clear();
         }
     }
 }
