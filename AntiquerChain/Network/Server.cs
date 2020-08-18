@@ -20,8 +20,7 @@ namespace AntiquerChain.Network
         private Task _listenTask;
 
         public event Func<Message, IPEndPoint, Task> MessageReceived;
-        public event Func<IPEndPoint, Task> NewConnection;
-        public List<IPEndPoint> ConnectingEndPoints { get; set; } = new List<IPEndPoint>();
+        public event Func<IPEndPoint, MessageType, Task> NewConnection;
 
         public Server( CancellationTokenSource tokenSource)
         {
@@ -36,7 +35,7 @@ namespace AntiquerChain.Network
             var endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkConstant.SERVER_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
-            await AddEndPoints(_listener.LocalEndpoint);
+            await (NewConnection?.Invoke(endPoint, MessageType.HandShake) ?? Task.CompletedTask);
             _listenTask = ConnectionWaitAsync();
         }
 
@@ -56,8 +55,8 @@ namespace AntiquerChain.Network
                         using var client = t.Result;
                         var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
                         var endPoint = client.Client.RemoteEndPoint;
+                        await (NewConnection?.Invoke(endPoint as IPEndPoint, message.Type) ?? Task.CompletedTask);
                         await (MessageReceived?.Invoke(message, endPoint as IPEndPoint) ?? Task.CompletedTask);
-                        await AddEndPoints(endPoint);
                     }
                     catch (SocketException e)
                     {
@@ -68,22 +67,9 @@ namespace AntiquerChain.Network
             _listener.Stop();
         }
 
-        public async Task AddEndPoints(EndPoint endPoint)
-        {
-            if(!(endPoint is IPEndPoint ipEndPoint)) return;
-            lock (ConnectingEndPoints)
-            {
-                if(ConnectingEndPoints.Any(x => Equals(x.Address, ipEndPoint.Address))) return;
-                ConnectingEndPoints.Add(ipEndPoint);
-            }
-            await (NewConnection?.Invoke(ipEndPoint) ?? Task.CompletedTask);
-            _logger.LogInformation($"Server: New Connection from {ipEndPoint}");
-        }
-
         public void Dispose()
         {
             _logger.LogInformation("Server: Stop listening...");
-            ConnectingEndPoints?.Clear();
             if (TokenSource is null) return;
             TokenSource.Cancel();
             TokenSource.Dispose();

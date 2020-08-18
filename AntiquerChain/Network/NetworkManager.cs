@@ -12,11 +12,13 @@ using static AntiquerChain.Network.Util.Messenger;
 
 namespace AntiquerChain.Network
 {
-    public class NetworkManager
+    public class NetworkManager : IDisposable
     {
         private Server _server;
         private ILogger _logger = Logging.Create<NetworkManager>();
         private Timer _timer;
+        private List<IPEndPoint> ConnectSurfaces { get; } = new List<IPEndPoint>();
+        private List<IPEndPoint> ConnectServers { get; set; } = new List<IPEndPoint>();
 
         public NetworkManager(CancellationToken token)
         {
@@ -26,22 +28,34 @@ namespace AntiquerChain.Network
             _server.MessageReceived += MessageHandle;
             _timer = new Timer(async _ => await AllConnectionCheckAsync(), null,
                 TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
-            token.Register(_timer.Dispose);
-            token.Register(_server.Dispose);
+            token.Register(Dispose);
         }
 
         public async Task StartServerAsync() => await (_server?.StartAsync() ?? Task.CompletedTask);
 
-        async Task NewConnection(IPEndPoint ipEndPoint)
+        async Task NewConnection(IPEndPoint ipEndPoint, MessageType type)
         {
-            Console.WriteLine($"{ipEndPoint}");
+            var list = type switch
+            {
+                MessageType.HandShake => ConnectServers,
+                MessageType.SurfaceHandShake => ConnectSurfaces,
+                _ => null
+            };
+            if(list is null) return;
+            lock (list)
+            {
+                if (list.Any(x => Equals(x.Address, ipEndPoint.Address))) return;
+                list.Add(ipEndPoint);
+            }
+            _logger.LogInformation($"Server: New Connection from {ipEndPoint} > {type}");
+            if(type != MessageType.HandShake) return;
             try
             {
-                await SendMessageAsync(ipEndPoint.Address, NetworkConstant.SERVER_PORT, HandShake.CreateMessage(_server.ConnectingEndPoints));
+                await SendMessageAsync(ipEndPoint.Address, NetworkConstant.SERVER_PORT, HandShake.CreateMessage(ConnectServers));
             }
             catch (SocketException)
             {
-                RemoveEndPoint(ipEndPoint);
+                RemoveEndPoint(ipEndPoint, list);
                 await BroadcastEndPointsAsync();
             }
         }
@@ -63,20 +77,20 @@ namespace AntiquerChain.Network
 
         async Task HandShakeHandle(HandShake msg, IPEndPoint endPoint)
         {
-            if(CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
-            lock (_server.ConnectingEndPoints)
+            if(CompareIpEndPoints(ConnectServers, msg.KnownIpEndPoints)) return;
+            lock (ConnectServers)
             {
-                _server.ConnectingEndPoints = UnionEndpoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints);
+                ConnectServers = UnionEndpoints(ConnectServers, msg.KnownIpEndPoints);
             }
             await BroadcastEndPointsAsync();
         }
 
         async Task AddrHandle(AddrPayload msg, IPEndPoint endPoint)
         {
-            if (CompareIpEndPoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints)) return;
-            lock (_server.ConnectingEndPoints)
+            if (CompareIpEndPoints(ConnectServers, msg.KnownIpEndPoints)) return;
+            lock (ConnectServers)
             {
-                _server.ConnectingEndPoints = UnionEndpoints(_server.ConnectingEndPoints, msg.KnownIpEndPoints);
+                ConnectServers = UnionEndpoints(ConnectServers, msg.KnownIpEndPoints);
             }
             await BroadcastEndPointsAsync();
         }
@@ -88,11 +102,11 @@ namespace AntiquerChain.Network
 
         async Task BroadcastEndPointsAsync()
         {
-            if (_server.ConnectingEndPoints is null) return;
-            _logger.LogInformation($"Server: Broadcast EndPoints to {_server.ConnectingEndPoints.Count}");
-            var addrMsg = AddrPayload.CreateMessage(_server.ConnectingEndPoints);
+            if (ConnectServers is null) return;
+            _logger.LogInformation($"Server: Broadcast EndPoints to {ConnectServers.Count}");
+            var addrMsg = AddrPayload.CreateMessage(ConnectServers);
             var disconnectedList = new List<IPEndPoint>();
-            foreach (var ep in _server.ConnectingEndPoints)
+            foreach (var ep in ConnectServers)
             {
                 try { await SendMessageAsync(ep.Address, NetworkConstant.SERVER_PORT, addrMsg); }
                 catch(SocketException)
@@ -101,7 +115,7 @@ namespace AntiquerChain.Network
                 }
             }
             if(disconnectedList.Count == 0) return;
-            foreach (var ep in disconnectedList) RemoveEndPoint(ep);
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep, ConnectServers);
             await BroadcastEndPointsAsync();
         }
 
@@ -114,7 +128,7 @@ namespace AntiquerChain.Network
         {
             try
             {
-                await SendMessageAsync(endPoint.Address, NetworkConstant.SERVER_PORT, HandShake.CreateMessage(_server.ConnectingEndPoints));
+                await SendMessageAsync(endPoint.Address, NetworkConstant.SERVER_PORT, HandShake.CreateMessage(ConnectServers));
             }
             catch (SocketException)
             {
@@ -124,10 +138,18 @@ namespace AntiquerChain.Network
 
         async Task AllConnectionCheckAsync()
         {
-            if(_server.ConnectingEndPoints.Count == 0) return;
+            _logger.LogInformation("Server: Servers Connection Checking...");
+            await AllServerConnectionCheckAsync();
+            _logger.LogInformation("Server: Surfaces Connection Checking...");
+            await AllSurfaceConnectionCheckAsync();
+        }
+
+        async Task AllServerConnectionCheckAsync()
+        {
+            if (ConnectServers.Count == 0) return;
             var msg = Ping.CreateMessage();
             var disconnectedList = new List<IPEndPoint>();
-            foreach (var ep in _server.ConnectingEndPoints)
+            foreach (var ep in ConnectServers)
             {
                 try { await SendMessageAsync(ep.Address, NetworkConstant.SERVER_PORT, msg); }
                 catch (SocketException)
@@ -136,13 +158,30 @@ namespace AntiquerChain.Network
                 }
             }
             if (disconnectedList.Count == 0) return;
-            foreach (var ep in disconnectedList) RemoveEndPoint(ep);
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep, ConnectServers);
             await BroadcastEndPointsAsync();
         }
 
-        private void RemoveEndPoint(IPEndPoint endPoint)
+        async Task AllSurfaceConnectionCheckAsync()
         {
-            var peers = _server.ConnectingEndPoints;
+            if (ConnectSurfaces.Count == 0) return;
+            var msg = Ping.CreateMessage();
+            var disconnectedList = new List<IPEndPoint>();
+            foreach (var ep in ConnectSurfaces)
+            {
+                try { await SendMessageAsync(ep.Address, NetworkConstant.SURFACE_PORT, msg); }
+                catch (SocketException)
+                {
+                    disconnectedList.Add(ep);
+                }
+            }
+            if (disconnectedList.Count == 0) return;
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep, ConnectSurfaces);
+        }
+
+        private void RemoveEndPoint(IPEndPoint endPoint, List<IPEndPoint> list)
+        {
+            var peers = list;
             lock (peers)
             {
                 var index = peers.FindIndex(peer => Equals(peer.Address, endPoint.Address));
@@ -157,6 +196,14 @@ namespace AntiquerChain.Network
             var listAstr = listA.DistinctByAddress().Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
             var listBstr = listB.DistinctByAddress().Select(i => $"{i.Address}").OrderBy(s => s).ToArray();
             return listBstr.SequenceEqual(listAstr);
+        }
+
+        public void Dispose()
+        {
+            _timer.Dispose();
+            _server.Dispose();
+            ConnectSurfaces?.Clear();
+            ConnectServers?.Clear();
         }
     }
 }
