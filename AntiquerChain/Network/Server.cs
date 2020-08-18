@@ -21,7 +21,6 @@ namespace AntiquerChain.Network
 
         public event Func<Message, IPEndPoint, Task> MessageReceived;
         public event Func<IPEndPoint, MessageType, Task> NewConnection;
-        public List<IPEndPoint> ConnectingEndPoints { get; set; } = new List<IPEndPoint>();
 
         public Server( CancellationTokenSource tokenSource)
         {
@@ -71,7 +70,6 @@ namespace AntiquerChain.Network
         public void Dispose()
         {
             _logger.LogInformation("Server: Stop listening...");
-            ConnectingEndPoints?.Clear();
             if (TokenSource is null) return;
             TokenSource.Cancel();
             TokenSource.Dispose();
