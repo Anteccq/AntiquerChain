@@ -17,6 +17,7 @@ namespace AntiquerChain.Network
         private Server _server;
         private ILogger _logger = Logging.Create<NetworkManager>();
         private Timer _timer;
+        private List<IPEndPoint> ConnectSurfaces = new List<IPEndPoint>();
 
         public NetworkManager(CancellationToken token)
         {
@@ -28,20 +29,34 @@ namespace AntiquerChain.Network
                 TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
             token.Register(_timer.Dispose);
             token.Register(_server.Dispose);
+            token.Register(() => ConnectSurfaces?.Clear());
         }
 
         public async Task StartServerAsync() => await (_server?.StartAsync() ?? Task.CompletedTask);
 
-        async Task NewConnection(IPEndPoint ipEndPoint)
+        async Task NewConnection(IPEndPoint ipEndPoint, MessageType type)
         {
-            Console.WriteLine($"{ipEndPoint}");
+            var list = type switch
+            {
+                MessageType.HandShake => _server.ConnectingEndPoints,
+                MessageType.SurfaceHandShake => ConnectSurfaces,
+                _ => null
+            };
+            if(list is null) return;
+            lock (list)
+            {
+                if (list.Any(x => Equals(x.Address, ipEndPoint.Address))) return;
+                list.Add(ipEndPoint);
+            }
+            _logger.LogInformation($"Server: New Connection from {ipEndPoint} > {type}");
+            if(type != MessageType.HandShake) return;
             try
             {
                 await SendMessageAsync(ipEndPoint.Address, NetworkConstant.SERVER_PORT, HandShake.CreateMessage(_server.ConnectingEndPoints));
             }
             catch (SocketException)
             {
-                RemoveEndPoint(ipEndPoint);
+                RemoveEndPoint(ipEndPoint, list);
                 await BroadcastEndPointsAsync();
             }
         }
@@ -101,7 +116,7 @@ namespace AntiquerChain.Network
                 }
             }
             if(disconnectedList.Count == 0) return;
-            foreach (var ep in disconnectedList) RemoveEndPoint(ep);
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep, _server.ConnectingEndPoints);
             await BroadcastEndPointsAsync();
         }
 
@@ -124,7 +139,15 @@ namespace AntiquerChain.Network
 
         async Task AllConnectionCheckAsync()
         {
-            if(_server.ConnectingEndPoints.Count == 0) return;
+            _logger.LogInformation("Server: Servers Connection Checking...");
+            await AllServerConnectionCheckAsync();
+            _logger.LogInformation("Server: Surfaces Connection Checking...");
+            await AllSurfaceConnectionCheckAsync();
+        }
+
+        async Task AllServerConnectionCheckAsync()
+        {
+            if (_server.ConnectingEndPoints.Count == 0) return;
             var msg = Ping.CreateMessage();
             var disconnectedList = new List<IPEndPoint>();
             foreach (var ep in _server.ConnectingEndPoints)
@@ -136,13 +159,30 @@ namespace AntiquerChain.Network
                 }
             }
             if (disconnectedList.Count == 0) return;
-            foreach (var ep in disconnectedList) RemoveEndPoint(ep);
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep, _server.ConnectingEndPoints);
             await BroadcastEndPointsAsync();
         }
 
-        private void RemoveEndPoint(IPEndPoint endPoint)
+        async Task AllSurfaceConnectionCheckAsync()
         {
-            var peers = _server.ConnectingEndPoints;
+            if (ConnectSurfaces.Count == 0) return;
+            var msg = Ping.CreateMessage();
+            var disconnectedList = new List<IPEndPoint>();
+            foreach (var ep in ConnectSurfaces)
+            {
+                try { await SendMessageAsync(ep.Address, NetworkConstant.SURFACE_PORT, msg); }
+                catch (SocketException)
+                {
+                    disconnectedList.Add(ep);
+                }
+            }
+            if (disconnectedList.Count == 0) return;
+            foreach (var ep in disconnectedList) RemoveEndPoint(ep, ConnectSurfaces);
+        }
+
+        private void RemoveEndPoint(IPEndPoint endPoint, List<IPEndPoint> list)
+        {
+            var peers = list;
             lock (peers)
             {
                 var index = peers.FindIndex(peer => Equals(peer.Address, endPoint.Address));
