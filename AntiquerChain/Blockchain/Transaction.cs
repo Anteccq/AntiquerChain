@@ -17,7 +17,7 @@ namespace AntiquerChain.Blockchain
     public class Output
     {
         public ulong Amount;
-        public byte[] PublicKey { get; set; }
+        public byte[] PublicKeyHash { get; set; }
     }
 
     public class Input
@@ -25,6 +25,6 @@ namespace AntiquerChain.Blockchain
         public string TransactionId { get; set; }
         public int OutputIndex { get; set; }
         public byte[] Signature { get; set; }
-        public byte[] PublicKey { get; set; }
+        public byte[] PublicKeyHash { get; set; }
     }
 }
