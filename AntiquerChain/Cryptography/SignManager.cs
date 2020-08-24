@@ -50,8 +50,9 @@ namespace AntiquerChain.Cryptography
             return ecdsa.SignHash(hash);
         }
 
-        public static bool Verify(byte[] hash, byte[] signature, byte[] publicKey)
+        public static bool Verify(byte[] hash, byte[] signature, byte[] publicKey, byte[] publicKeyHash)
         {
+            if (HashUtil.RIPEMD_SHA256(publicKey) != publicKeyHash) return false;
             var (x, y) = JsonSerializer.Deserialize<Coordinate>(publicKey);
             var pubEcPoint = new ECPoint() { X = x, Y = y };
             var ecp = new ECParameters()
