@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using AntiquerChain.Blockchain;
 using Org.BouncyCastle.Crypto.Digests;
 
 namespace AntiquerChain.Cryptography
@@ -30,5 +32,25 @@ namespace AntiquerChain.Cryptography
         }
 
         public static byte[] RIPEMD_SHA256(byte[] data) => RIPEMD160(SHA256(data));
+
+        public static byte[] ComputeMerkleRootHash(IList<HexString> leaves) =>
+            ComputeMerkleRootHash(leaves.Select(x => x.Bytes).ToList());
+
+        public static byte[] ComputeMerkleRootHash(IList<byte[]> bytes)
+        {
+            while (true)
+            {
+                if (bytes.Count == 1) return bytes.First();
+
+                if (bytes.Count % 2 > 0) bytes.Add(bytes.Last());
+                var blanches = new List<byte[]>();
+                for (var i = 0; i < bytes.Count; i += 2)
+                {
+                    blanches.Add(DoubleSHA256(bytes[i].Concat(bytes[i + 1]).ToArray()));
+                }
+
+                bytes = blanches;
+            }
+        }
     }
 }

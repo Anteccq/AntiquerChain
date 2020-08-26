@@ -17,7 +17,7 @@ namespace AntiquerChain.Blockchain
             set
             {
                 _string = value;
-                ToBytes();
+                _bytes = ToBytes(value);
             }
         }
 
@@ -27,7 +27,7 @@ namespace AntiquerChain.Blockchain
             set
             {
                 _bytes = value;
-                HexToString();
+                _string = HexToString(value);
             }
         }
 
@@ -41,21 +41,19 @@ namespace AntiquerChain.Blockchain
             Bytes = bytes;
         }
 
-        private void ToBytes()
+        public static byte[] ToBytes(string s)
         {
-            var str = _string;
+            var str = s;
             var array = new byte[str.Length / 2];
             for (var i = 0; i < str.Length; i += 2)
             {
                 array[i / 2] = Convert.ToByte(str.Substring(i, 2), 16);
             }
-            _bytes = array;
+            return array;
         }
 
-        private void HexToString()
-        {
-            _string = string.Join("",_bytes.Select(x => $"{x:X2}"));
-        }
+        public static string HexToString(byte[] data) =>
+            string.Join("",data.Select(x => $"{x:X2}"));
 
         public override string ToString() => String;
     }
