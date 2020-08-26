@@ -6,7 +6,7 @@ namespace AntiquerChain.Blockchain
 {
     public class Transaction
     {
-        public string Id { get; set; }
+        public HexString Id { get; set; }
         public DateTime TimeStamp { get; set; }
         public string Engraving { get; set; }
         public List<Output> Outputs { get; set; }
@@ -22,9 +22,9 @@ namespace AntiquerChain.Blockchain
 
     public class Input
     {
-        public string TransactionId { get; set; }
+        public HexString TransactionId { get; set; }
         public int OutputIndex { get; set; }
         public byte[] Signature { get; set; }
-        public byte[] PublicKeyHash { get; set; }
+        public byte[] PublicKey { get; set; }
     }
 }
