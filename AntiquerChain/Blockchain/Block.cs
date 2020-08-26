@@ -6,7 +6,7 @@ namespace AntiquerChain.Blockchain
 {
     public class Block
     {
-        public byte[] PreviousBlockHash { get; set; }
+        public HexString PreviousBlockHash { get; set; }
         public byte[] MerkleRootHash { get; set; }
         public DateTime Timestamp { get; set; }
         public int Nonce { get; set; }
