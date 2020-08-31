@@ -9,7 +9,7 @@ namespace AntiquerChain.Blockchain
         public HexString PreviousBlockHash { get; set; }
         public byte[] MerkleRootHash { get; set; }
         public DateTime Timestamp { get; set; }
-        public int Nonce { get; set; }
+        public ulong Nonce { get; set; }
         public List<Transaction> Transactions { get; set; }
     }
 }

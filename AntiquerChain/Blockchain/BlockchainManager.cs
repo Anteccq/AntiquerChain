@@ -105,7 +105,7 @@ namespace AntiquerChain.Blockchain
             return DifficultyTarget;
         }
 
-        public Block MakeBlock(int nonce, List<Transaction> transactions)
+        public Block MakeBlock(ulong nonce, List<Transaction> transactions)
         {
             var merkleHash = HashUtil.ComputeMerkleRootHash(transactions.Select(x => x.Id).ToList());
             var lastBlock = JsonSerializer.Serialize(Blockchain.Last());
