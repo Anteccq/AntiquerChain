@@ -81,7 +81,7 @@ namespace AntiquerChain.Blockchain
             var isRight = Blockchain.Take(Blockchain.Count - 1).SkipWhile((block, i) =>
             {
                 var leadData = JsonSerializer.Serialize(block);
-                return Blockchain[i + 1].PreviousBlockHash.Bytes != leadData;
+                return Blockchain[i + 1].PreviousBlockHash.Bytes != HashUtil.DoubleSHA256(leadData);
             }).Any();
 
             return !isRight;
