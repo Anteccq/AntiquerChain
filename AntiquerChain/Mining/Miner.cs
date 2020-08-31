@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using AntiquerChain.Blockchain;
@@ -26,8 +27,7 @@ namespace AntiquerChain.Mining
                 block.Timestamp = DateTime.UtcNow;
                 var data = JsonSerializer.Serialize(block);
                 var hash = HashUtil.DoubleSHA256(data);
-                _logger.LogInformation($"{BitConverter.ToDouble(hash)} : {BlockchainManager.DifficultyTarget}");
-                if (BitConverter.ToDouble(hash) < BlockchainManager.DifficultyTarget) return true;
+                if (BitConverter.ToDouble(hash, 0) < BlockchainManager.DifficultyTarget) return true;
             }
 
             return false;
