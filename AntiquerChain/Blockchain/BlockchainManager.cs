@@ -13,6 +13,8 @@ namespace AntiquerChain.Blockchain
 
         private const int CoinBaseInterval = 20;
 
+        private static readonly DateTime GenesisTime = new DateTime(2020,8, 31, 15, 40, 30, DateTimeKind.Utc);
+
         public List<Transaction> TransactionPool { get; } = new List<Transaction>();
 
         public Transaction[] GetPool() => 
@@ -28,10 +30,9 @@ namespace AntiquerChain.Blockchain
 
         public static Block CreateGenesis()
         {
-            var txs = new List<Transaction>()
-            {
-                CreateCoinBaseTransaction(0, null, "ArC - A Little BlockChain by C#")
-            };
+            var tx = CreateCoinBaseTransaction(0, null, "ArC - A Little BlockChain by C#");
+            tx.TimeStamp = GenesisTime;
+            var txs = new List<Transaction> {tx};
             var rootHash = HashUtil.ComputeMerkleRootHash(txs.Select(x => x.Id).ToList());
 
             return new Block()
@@ -40,7 +41,7 @@ namespace AntiquerChain.Blockchain
                 Nonce = 2083236893,
                 Transactions = txs,
                 MerkleRootHash = rootHash,
-                Timestamp = new DateTime(2020,8,27),
+                Timestamp = GenesisTime
             };
         }
 
@@ -48,7 +49,7 @@ namespace AntiquerChain.Blockchain
         {
             var tx = new Transaction()
             {
-                TimeStamp = new DateTime(2020, 8, 27),
+                TimeStamp = DateTime.UtcNow,
                 Engraving = engrave,
                 Inputs = new List<Input>(),
                 Outputs = new List<Output>()
