@@ -37,11 +37,10 @@ namespace AntiquerChain
         {
             var genesis = BlockchainManager.CreateGenesis();
             var miner = new Miner();
-            Console.WriteLine("Calculate");
-            BlockchainManager.DifficultyTarget *= 1000;
-            Console.WriteLine($"{BlockchainManager.DifficultyTarget}");
-            var by = BitConverter.GetBytes(BlockchainManager.DifficultyTarget).Reverse().ToArray();
-            Console.WriteLine(string.Join("", by.Select(x => $"{x:X2}")));
+            Console.WriteLine("Mining");
+            Difficulty.DifficultyBits+=3;
+            var bytes = Difficulty.TargetBytes;
+            Console.WriteLine($"Target : {string.Join("", bytes.Select(x => $"{x:X2}"))}");
             miner.Mining(genesis, Context.CancellationToken);
             Console.WriteLine("OK");
             Console.ReadLine();

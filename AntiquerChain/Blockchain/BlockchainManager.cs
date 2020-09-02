@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using AntiquerChain.Cryptography;
 using Utf8Json;
@@ -9,18 +10,13 @@ namespace AntiquerChain.Blockchain
 {
     public class BlockchainManager
     {
-        public static List<Block> Blockchain { get; } = new List<Block>();
+        public static List<Block> Chain { get; } = new List<Block>();
 
         private const int CoinBaseInterval = 20;
 
         private static readonly DateTime GenesisTime = new DateTime(2020,8, 31, 15, 40, 30, DateTimeKind.Utc);
 
         public List<Transaction> TransactionPool { get; } = new List<Transaction>();
-
-        // Bitcoin 1 Difficulty
-        public static double DifficultyTarget { get; set; } = 0x00FFFF * Math.Pow(2, 8*(0x1b - 3));
-        private const int TargetTime = 1000;
-        private const int DifInterval = 100;
 
         public Transaction[] GetPool() => 
             TransactionPool.ToArray();
@@ -83,10 +79,10 @@ namespace AntiquerChain.Blockchain
                 i++;
             }*/
 
-            var isRight = Blockchain.Take(Blockchain.Count - 1).SkipWhile((block, i) =>
+            var isRight = Chain.Take(Chain.Count - 1).SkipWhile((block, i) =>
             {
                 var leadData = JsonSerializer.Serialize(block);
-                return Blockchain[i + 1].PreviousBlockHash.Bytes != HashUtil.DoubleSHA256(leadData);
+                return Chain[i + 1].PreviousBlockHash.Bytes != HashUtil.DoubleSHA256(leadData);
             }).Any();
 
             return !isRight;
@@ -95,20 +91,10 @@ namespace AntiquerChain.Blockchain
         public static int GetSubsidy(int height) =>
             50 >> height / CoinBaseInterval;
 
-        public static double CalculateNextDifficulty()
-        {
-            var actualTime = (Blockchain.Last().Timestamp - Blockchain[^DifInterval].Timestamp).Seconds;
-            if (actualTime < TargetTime / 4) actualTime = TargetTime / 4;
-            if (actualTime > TargetTime * 4) actualTime = TargetTime * 4;
-            DifficultyTarget *= actualTime;
-            DifficultyTarget /= TargetTime;
-            return DifficultyTarget;
-        }
-
         public Block MakeBlock(ulong nonce, List<Transaction> transactions)
         {
             var merkleHash = HashUtil.ComputeMerkleRootHash(transactions.Select(x => x.Id).ToList());
-            var lastBlock = JsonSerializer.Serialize(Blockchain.Last());
+            var lastBlock = JsonSerializer.Serialize(Chain.Last());
             return new Block()
             {
                 MerkleRootHash = merkleHash,

@@ -19,7 +19,7 @@ namespace AntiquerChain.Mining
             var rnd = new Random();
             var buf = new byte[sizeof(ulong)];
             rnd.NextBytes(buf);
-
+            var target = Difficulty.TargetBytes;
             var nonce = BitConverter.ToUInt64(buf, 0);
             while (!token.IsCancellationRequested)
             {
@@ -27,10 +27,24 @@ namespace AntiquerChain.Mining
                 block.Timestamp = DateTime.UtcNow;
                 var data = JsonSerializer.Serialize(block);
                 var hash = HashUtil.DoubleSHA256(data);
-                if (BitConverter.ToDouble(hash, 0) < BlockchainManager.DifficultyTarget) return true;
+                _logger.LogInformation($"{string.Join("", hash.Select(x => $"{x:X2}"))}");
+                if (!HashCheck(hash, target)) continue;
+                _logger.LogInformation($"Success : {string.Join("",hash.Select(x => $"{x:X2}"))}");
+                return true;
             }
 
             return false;
+        }
+
+        private static bool HashCheck(byte[] data1, byte[] target)
+        {
+            if (data1.Length != 32 || target.Length != 32) return false;
+            for (var i = 0; i < data1.Length; i++)
+            {
+                if (data1[i] < target[i]) return true;
+                if (data1[i] > target[i]) return false;
+            }
+            return true;
         }
     }
 }
