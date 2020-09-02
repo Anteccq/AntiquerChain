@@ -17,11 +17,12 @@ namespace AntiquerChain.Blockchain
             set
             {
                 if(value > MaxDifficultBits) return;
-                if(value < 1) return;
+                if(value < MinDifficultBits) return;
                 _difficultyBits = value;
             }
         }
         public const uint MaxDifficultBits = 32;
+        public const uint MinDifficultBits = 5;
 
         public static byte[] TargetBytes
         {
