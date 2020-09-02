@@ -10,14 +10,14 @@ namespace AntiquerChain.Blockchain
 {
     public static class Difficulty
     {
-        private static uint _difficultyBits=1;
+        private static uint _difficultyBits = MinDifficultBits;
         public static uint DifficultyBits
         {
             get => _difficultyBits;
             set
             {
-                if(value > MaxDifficultBits) return;
-                if(value < MinDifficultBits) return;
+                if (value > MaxDifficultBits) value = MaxDifficultBits;
+                if (value < MinDifficultBits) value = MinDifficultBits;
                 _difficultyBits = value;
             }
         }
