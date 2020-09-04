@@ -8,7 +8,7 @@ using Utf8Json;
 
 namespace AntiquerChain.Blockchain
 {
-    public class BlockchainManager
+    public static class BlockchainManager
     {
         public static List<Block> Chain { get; } = new List<Block>();
 
@@ -16,12 +16,12 @@ namespace AntiquerChain.Blockchain
 
         private static readonly DateTime GenesisTime = new DateTime(2020,8, 31, 15, 40, 30, DateTimeKind.Utc);
 
-        public List<Transaction> TransactionPool { get; } = new List<Transaction>();
+        public static List<Transaction> TransactionPool { get; } = new List<Transaction>();
 
-        public Transaction[] GetPool() => 
+        public static Transaction[] GetPool() => 
             TransactionPool.ToArray();
 
-        public void ClearPool(int count)
+        public static void ClearPool(int count)
         {
             lock (TransactionPool)
             {
@@ -29,7 +29,7 @@ namespace AntiquerChain.Blockchain
             }
         }
 
-        public void ClearPool(string ids)
+        public static void ClearPool(string ids)
         {
             lock (TransactionPool)
             {
@@ -37,10 +37,11 @@ namespace AntiquerChain.Blockchain
             }
         }
 
-        public void AddTx(Transaction tx)
+        public static void AddTx(Transaction tx)
         {
             lock (TransactionPool)
             {
+                if(TransactionPool.All(x => x.Id.Bytes != tx.Id.Bytes)) return;
                 TransactionPool.Add(tx);
             }
         }
@@ -84,7 +85,7 @@ namespace AntiquerChain.Blockchain
             return tx;
         }
 
-        public bool VerifyBlockchain()
+        public static bool VerifyBlockchain()
         {
             /*var i = 0;
             while (i < Blockchain.Count)
@@ -107,7 +108,7 @@ namespace AntiquerChain.Blockchain
         public static int GetSubsidy(int height) =>
             50 >> height / CoinBaseInterval;
 
-        public Block MakeBlock(ulong nonce, List<Transaction> transactions)
+        public static Block MakeBlock(ulong nonce, List<Transaction> transactions)
         {
             var merkleHash = HashUtil.ComputeMerkleRootHash(transactions.Select(x => x.Id).ToList());
             var lastBlock = JsonSerializer.Serialize(Chain.Last());

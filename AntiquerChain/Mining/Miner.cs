@@ -13,6 +13,8 @@ namespace AntiquerChain.Mining
     public class Miner
     {
         private ILogger _logger = Logging.Create<Miner>();
+        public bool IsMining = false;
+        private CancellationTokenSource _tokenSource;
 
         public bool Mining(Block block, CancellationToken token)
         {
@@ -45,6 +47,38 @@ namespace AntiquerChain.Mining
                 if (data1[i] > target[i]) return false;
             }
             return true;
+        }
+
+        public void Start()
+        {
+            _tokenSource = new CancellationTokenSource();
+            IsMining = true;
+            Execute(_tokenSource.Token);
+        }
+
+        public void Stop()
+        {
+            IsMining = false;
+            if (_tokenSource is null) return;
+
+            _tokenSource.Cancel();
+            _tokenSource.Dispose();
+            _tokenSource = null;
+        }
+
+        public void Restart()
+        {
+            if(!IsMining) return;
+            Stop();
+            Start();
+        }
+
+        public void Execute(CancellationToken token)
+        {
+            var txs = BlockchainManager.GetPool();
+            var time = DateTime.UtcNow;
+            var subsidy = BlockchainManager.GetSubsidy(BlockchainManager.Chain.Count);
+
         }
     }
 }
