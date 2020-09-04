@@ -21,12 +21,28 @@ namespace AntiquerChain.Blockchain
         public Transaction[] GetPool() => 
             TransactionPool.ToArray();
 
-        public void ClearPool(int count) => 
-            TransactionPool.RemoveRange(0, count);
-
-        public void ClearPool(HexString[] strings)
+        public void ClearPool(int count)
         {
-            TransactionPool.RemoveAll(x => strings.Contains(x.Id));
+            lock (TransactionPool)
+            {
+                TransactionPool.RemoveRange(0, count);
+            }
+        }
+
+        public void ClearPool(string ids)
+        {
+            lock (TransactionPool)
+            {
+                TransactionPool.RemoveAll(x => ids.Contains(x.Id.String));
+            }
+        }
+
+        public void AddTx(Transaction tx)
+        {
+            lock (TransactionPool)
+            {
+                TransactionPool.Add(tx);
+            }
         }
 
         public static Block CreateGenesis()
