@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using AntiquerChain.Blockchain;
 using Org.BouncyCastle.Crypto.Digests;
+using Utf8Json;
 
 namespace AntiquerChain.Cryptography
 {
@@ -51,6 +52,19 @@ namespace AntiquerChain.Cryptography
 
                 bytes = blanches;
             }
+        }
+
+        public static byte[] ComputeTransactionSignHash(byte[] data)
+        {
+            var tx = JsonSerializer.Deserialize<Transaction>(data);
+            foreach (var input in tx.Inputs)
+            {
+                input.PublicKey = null;
+                input.Signature = null;
+            }
+
+            var b = JsonSerializer.Serialize(tx);
+            return HashUtil.DoubleSHA256(b);
         }
     }
 }

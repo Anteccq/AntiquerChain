@@ -121,5 +121,25 @@ namespace AntiquerChain.Blockchain
                 Transactions = transactions
             };
         }
+
+        public static void TransactionVerify(Transaction tx)
+        {
+            var hash = HashUtil.ComputeTransactionSignHash(JsonSerializer.Serialize(tx));
+            foreach (var input in tx.Inputs)
+            {
+                var chainTxs = Chain.SelectMany(x => x.Transactions);
+                //Input Verify
+                var transactions = chainTxs as Transaction[] ?? chainTxs.ToArray();
+                var prevOutTx = transactions
+                        .First(x => x.Id.Bytes == input.TransactionId.Bytes)?
+                        .Outputs[input.OutputIndex];
+                var verified = prevOutTx != null && SignManager.Verify(hash, input.Signature, input.PublicKey, prevOutTx.PublicKeyHash);
+
+                //utxo check ブロックの長さに比例してコストが上がってしまう問題アリ
+                var utxoUsed  = transactions.SelectMany(x => x.Inputs).Any(ipt => ipt.TransactionId.Bytes != input.TransactionId.Bytes);
+
+
+            }
+        }
     }
 }

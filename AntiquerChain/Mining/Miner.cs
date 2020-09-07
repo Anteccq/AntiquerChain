@@ -79,6 +79,24 @@ namespace AntiquerChain.Mining
             var time = DateTime.UtcNow;
             var subsidy = BlockchainManager.GetSubsidy(BlockchainManager.Chain.Count);
 
+            txs.Where(tx =>
+            {
+                foreach (var input in tx.Inputs)
+                {
+                    try
+                    {
+                        var outTx = BlockchainManager.Chain.SelectMany(x => x.Transactions)
+                            .First(x => x.Id.Bytes == input.TransactionId.Bytes)?.Outputs;
+                        return outTx.
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        throw;
+                    }
+
+                }
+            })
         }
     }
 }
