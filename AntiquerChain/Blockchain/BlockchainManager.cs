@@ -59,7 +59,8 @@ namespace AntiquerChain.Blockchain
                 Nonce = 2083236893,
                 Transactions = txs,
                 MerkleRootHash = rootHash,
-                Timestamp = GenesisTime
+                Timestamp = GenesisTime,
+                Bits = 5
             };
         }
 
@@ -105,8 +106,8 @@ namespace AntiquerChain.Blockchain
             return !isRight;
         }
 
-        public static int GetSubsidy(int height) =>
-            50 >> height / CoinBaseInterval;
+        public static ulong GetSubsidy(int height) =>
+            (ulong)50 >> height / CoinBaseInterval;
 
         public static Block MakeBlock(ulong nonce, List<Transaction> transactions)
         {
@@ -122,9 +123,15 @@ namespace AntiquerChain.Blockchain
             };
         }
 
-        public static void TransactionVerify(Transaction tx)
+        public static void VerifyTransaction(Transaction tx, DateTime timestamp, ulong coinbase = 0)
         {
+            if(tx.TimeStamp > timestamp ||
+               !(coinbase == 0 ^ tx.Inputs.Count == 0))
+                throw new ArgumentException();
+
             var hash = HashUtil.ComputeTransactionSignHash(JsonSerializer.Serialize(tx));
+            //Input check
+            var inSum = coinbase;
             foreach (var input in tx.Inputs)
             {
                 var chainTxs = Chain.SelectMany(x => x.Transactions);
@@ -138,8 +145,25 @@ namespace AntiquerChain.Blockchain
                 //utxo check ブロックの長さに比例してコストが上がってしまう問題アリ
                 var utxoUsed  = transactions.SelectMany(x => x.Inputs).Any(ipt => ipt.TransactionId.Bytes != input.TransactionId.Bytes);
 
+                var redeemable = prevOutTx.PublicKeyHash == HashUtil.RIPEMD_SHA256(input.PublicKey);
 
+                inSum = checked(inSum + prevOutTx.Amount);
+
+                if(!verified || utxoUsed || !redeemable)
+                    throw new ArgumentException();
             }
+
+            ulong outSum = 0;
+            foreach (var output in tx.Outputs)
+            {
+                if (output.PublicKeyHash is null || output.Amount <= 0)
+                    throw new ArgumentException();
+                outSum = checked(outSum + output.Amount);
+            }
+
+            if(outSum > inSum) throw new ArgumentException();
+
+            tx.TransactionFee = inSum - outSum;
         }
     }
 }

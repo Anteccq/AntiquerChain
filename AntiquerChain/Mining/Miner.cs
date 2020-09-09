@@ -16,12 +16,14 @@ namespace AntiquerChain.Mining
         public bool IsMining = false;
         private CancellationTokenSource _tokenSource;
 
+        public HexString MinerKeyHash { get; set; }
+
         public bool Mining(Block block, CancellationToken token)
         {
             var rnd = new Random();
             var buf = new byte[sizeof(ulong)];
             rnd.NextBytes(buf);
-            var target = Difficulty.TargetBytes;
+            var target = Difficulty.GetTargetBytes(block.Bits);
             var nonce = BitConverter.ToUInt64(buf, 0);
             while (!token.IsCancellationRequested)
             {
@@ -32,6 +34,7 @@ namespace AntiquerChain.Mining
                 _logger.LogInformation($"{string.Join("", hash.Select(x => $"{x:X2}"))}");
                 if (!HashCheck(hash, target)) continue;
                 _logger.LogInformation($"Success : {string.Join("",hash.Select(x => $"{x:X2}"))}");
+                block.Id = new HexString(hash);
                 return true;
             }
 
@@ -79,24 +82,45 @@ namespace AntiquerChain.Mining
             var time = DateTime.UtcNow;
             var subsidy = BlockchainManager.GetSubsidy(BlockchainManager.Chain.Count);
 
-            txs.Where(tx =>
+            var txList = txs.Where(tx =>
             {
-                foreach (var input in tx.Inputs)
+                try
                 {
-                    try
-                    {
-                        var outTx = BlockchainManager.Chain.SelectMany(x => x.Transactions)
-                            .First(x => x.Id.Bytes == input.TransactionId.Bytes)?.Outputs;
-                        return outTx.
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e);
-                        throw;
-                    }
-
+                    token.ThrowIfCancellationRequested();
+                    BlockchainManager.VerifyTransaction(tx, time);
+                    subsidy += tx.TransactionFee;
+                    return true;
                 }
-            })
+                catch
+                {
+                    return false;
+                }
+            }).ToList();
+
+            var coinbaseTx = new Transaction()
+            {
+                Inputs = new List<Input>(),
+                Outputs = new List<Output>() {new Output() {Amount = subsidy, PublicKeyHash = MinerKeyHash.Bytes}},
+                TimeStamp = time
+            };
+            coinbaseTx.Id = new HexString(HashUtil.DoubleSHA256(JsonSerializer.Serialize(coinbaseTx)));
+            BlockchainManager.VerifyTransaction(coinbaseTx, time, subsidy);
+            txList.Insert(0, coinbaseTx);
+
+            var txIds = txList.Select(x => x.Id).ToList();
+            var block = new Block()
+            {
+                PreviousBlockHash = BlockchainManager.Chain.Last().Id,
+                Transactions = txList,
+                MerkleRootHash = HashUtil.ComputeMerkleRootHash(txIds),
+                Bits = Difficulty.DifficultyBits
+            };
+
+            if(!Mining(block, token)) return;
+
+            _logger.LogInformation($"Mined : {JsonSerializer.ToJsonString(block)}");
+
+            //Broadcast Block
         }
     }
 }
