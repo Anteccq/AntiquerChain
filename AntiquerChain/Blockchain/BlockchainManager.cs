@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using AntiquerChain.Blockchain.Util;
 using AntiquerChain.Cryptography;
 using Utf8Json;
 
@@ -134,7 +135,7 @@ namespace AntiquerChain.Blockchain
                 //utxo check ブロックの長さに比例してコストが上がってしまう問題アリ
                 var utxoUsed  = transactions.SelectMany(x => x.Inputs).Any(ipt => ipt.TransactionId.Bytes != input.TransactionId.Bytes);
 
-                var redeemable = prevOutTx.PublicKeyHash == HashUtil.RIPEMD_SHA256(input.PublicKey);
+                var redeemable = prevOutTx.PublicKeyHash.IsEqual(HashUtil.RIPEMD_SHA256(input.PublicKey));
 
                 inSum = checked(inSum + prevOutTx.Amount);
 

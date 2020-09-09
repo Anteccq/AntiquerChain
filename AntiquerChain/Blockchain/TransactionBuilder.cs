@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using AntiquerChain.Cryptography;
 using Utf8Json;
@@ -33,6 +34,7 @@ namespace AntiquerChain.Blockchain
         {
             tx.Inputs ??= new List<Input>();
             tx.Outputs ??= new List<Output>();
+            tx.Engraving ??= "";
             tx.TransactionFee = 0;
             _transaction = tx;
         }
@@ -41,6 +43,11 @@ namespace AntiquerChain.Blockchain
         {
             _transaction.TimeStamp = DateTime.UtcNow;
             _transaction.Id = null;
+            foreach (var inEntry in Inputs)
+            {
+                inEntry.PublicKey = null;
+                inEntry.Signature = null;
+            }
             var hash = HashUtil.ComputeTransactionSignHash(JsonSerializer.Serialize(_transaction));
             var signature = SignManager.Signature(hash, privateKey, publicKey);
             foreach (var inEntry in Inputs)
@@ -54,9 +61,11 @@ namespace AntiquerChain.Blockchain
             return _transaction;
         }
 
-        public Transaction ToTransaction()
+        public Transaction ToTransaction() => ToTransaction(DateTime.UtcNow);
+
+        public Transaction ToTransaction(DateTime timestamp)
         {
-            _transaction.TimeStamp = DateTime.UtcNow;
+            _transaction.TimeStamp = timestamp;
             var txData = JsonSerializer.Serialize(_transaction);
             var txHash = HashUtil.DoubleSHA256(txData);
             _transaction.Id = new HexString(txHash);

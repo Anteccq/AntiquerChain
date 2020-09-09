@@ -49,12 +49,35 @@ namespace AntiquerChain
             miner.Mining(genesis, Context.CancellationToken);
             BlockchainManager.Chain.Add(genesis);
 
+
+            for (var i = 0; i < 10; i++)
+            {
+                var gg = BlockchainManager.CreateCoinBaseTransaction(i+1, publickKeyHash.Bytes, $"まかろに{i}");
+                gg.TimeStamp = DateTime.UtcNow;
+                var txs = new List<Transaction>() { gg };
+                var rootHash = HashUtil.ComputeMerkleRootHash(txs.Select(x => x.Id).ToList());
+
+                var b = new Block()
+                {
+                    PreviousBlockHash = BlockchainManager.Chain.Last().Id,
+                    Transactions = txs,
+                    MerkleRootHash = rootHash,
+                    Timestamp = DateTime.UtcNow,
+                    Bits = 1
+                };
+                miner.Mining(b, Context.CancellationToken);
+                BlockchainManager.Chain.Add(b);
+                Task.Delay(10).GetAwaiter().GetResult();
+            }
+
             //Second Block Mining
+            Console.WriteLine($"{genesis.Transactions.Count}");
             var tb = new TransactionBuilder();
-            var genTx = genesis.Transactions.First(x => x.Engraving == "");
+            var ttx = BlockchainManager.Chain.SelectMany(x => x.Transactions).First(x => x.Engraving == "まかろに0");
+
             var input = new Input()
             {
-                TransactionId = genTx.Id,
+                TransactionId = ttx.Id,
                 OutputIndex = 0,
             };
             var output = new Output()
@@ -68,8 +91,7 @@ namespace AntiquerChain
             BlockchainManager.TransactionPool.Add(tx);
             miner.Start();
 
-
-            Console.WriteLine("OK");
+            Console.WriteLine($"{BlockchainManager.VerifyBlockchain()} : OK");
             Console.ReadLine();
         }
     }

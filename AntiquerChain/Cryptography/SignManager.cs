@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using AntiquerChain.Blockchain;
+using AntiquerChain.Blockchain.Util;
 using Org.BouncyCastle.Asn1.Sec;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Security;
@@ -52,7 +55,7 @@ namespace AntiquerChain.Cryptography
 
         public static bool Verify(byte[] hash, byte[] signature, byte[] publicKey, byte[] publicKeyHash)
         {
-            if (HashUtil.RIPEMD_SHA256(publicKey) != publicKeyHash) return false;
+            if (!HashUtil.RIPEMD_SHA256(publicKey).IsEqual(publicKeyHash)) return false;
             var (x, y) = JsonSerializer.Deserialize<Coordinate>(publicKey);
             var pubEcPoint = new ECPoint() { X = x, Y = y };
             var ecp = new ECParameters()

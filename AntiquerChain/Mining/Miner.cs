@@ -31,7 +31,6 @@ namespace AntiquerChain.Mining
                 block.Timestamp = DateTime.UtcNow;
                 var data = JsonSerializer.Serialize(block);
                 var hash = HashUtil.DoubleSHA256(data);
-                _logger.LogInformation($"{string.Join("", hash.Select(x => $"{x:X2}"))}");
                 if (!HashCheck(hash, target)) continue;
                 _logger.LogInformation($"Success : {string.Join("",hash.Select(x => $"{x:X2}"))}");
                 block.Id = new HexString(hash);
@@ -103,11 +102,12 @@ namespace AntiquerChain.Mining
                 PublicKeyHash = MinerKeyHash.Bytes
             };
             var tb = new TransactionBuilder(new List<Output>(){cbOut}, new List<Input>());
-            var coinbaseTx = tb.ToTransaction();
+            var coinbaseTx = tb.ToTransaction(time);
             BlockchainManager.VerifyTransaction(coinbaseTx, time, subsidy);
             txList.Insert(0, coinbaseTx);
 
             var txIds = txList.Select(x => x.Id).ToList();
+
             var block = new Block()
             {
                 PreviousBlockHash = BlockchainManager.Chain.Last().Id,
@@ -116,9 +116,10 @@ namespace AntiquerChain.Mining
                 Bits = Difficulty.DifficultyBits
             };
 
-            if(!Mining(block, token)) return;
+            if (!Mining(block, token)) return;
 
-            _logger.LogInformation($"Mined : {JsonSerializer.ToJsonString(block)}");
+            _logger.LogInformation($"Mined");
+            _logger.LogInformation($"{JsonSerializer.PrettyPrint(JsonSerializer.Serialize(block))}");
 
             //Broadcast Block
         }
