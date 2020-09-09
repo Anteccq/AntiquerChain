@@ -57,6 +57,7 @@ namespace AntiquerChain.Cryptography
         public static byte[] ComputeTransactionSignHash(byte[] data)
         {
             var tx = JsonSerializer.Deserialize<Transaction>(data);
+            tx.Id = null;
             foreach (var input in tx.Inputs)
             {
                 input.PublicKey = null;

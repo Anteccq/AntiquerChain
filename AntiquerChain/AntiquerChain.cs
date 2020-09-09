@@ -5,10 +5,12 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using AntiquerChain.Blockchain;
+using AntiquerChain.Cryptography;
 using AntiquerChain.Mining;
 using AntiquerChain.Network;
 using ConsoleAppFramework;
 using Microsoft.Extensions.Logging;
+using Utf8Json;
 
 namespace AntiquerChain
 {
@@ -35,13 +37,38 @@ namespace AntiquerChain
         [Command("min", "Mining genesis block")]
         public void Mining()
         {
+            var (privateKey, publicKey) = SignManager.GenerateKeys();
+            var publickKeyHash = new HexString(HashUtil.RIPEMD_SHA256(publicKey));
+            //Genesis Mining
             var genesis = BlockchainManager.CreateGenesis();
-            var miner = new Miner();
+            var miner = new Miner
+            {
+                MinerKeyHash = publickKeyHash
+            };
             Console.WriteLine("Mining");
-            Difficulty.DifficultyBits+=3;
-            var bytes = Difficulty.TargetBytes;
-            Console.WriteLine($"Target : {string.Join("", bytes.Select(x => $"{x:X2}"))}");
             miner.Mining(genesis, Context.CancellationToken);
+            BlockchainManager.Chain.Add(genesis);
+
+            //Second Block Mining
+            var tb = new TransactionBuilder();
+            var genTx = genesis.Transactions.First(x => x.Engraving == "");
+            var input = new Input()
+            {
+                TransactionId = genTx.Id,
+                OutputIndex = 0,
+            };
+            var output = new Output()
+            {
+                Amount = 10,
+                PublicKeyHash = publickKeyHash.Bytes
+            };
+            tb.Inputs.Add(input);
+            tb.Outputs.Add(output);
+            var tx = tb.ToSignedTransaction(privateKey, publicKey);
+            BlockchainManager.TransactionPool.Add(tx);
+            miner.Start();
+
+
             Console.WriteLine("OK");
             Console.ReadLine();
         }

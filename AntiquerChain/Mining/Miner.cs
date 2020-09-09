@@ -97,13 +97,13 @@ namespace AntiquerChain.Mining
                 }
             }).ToList();
 
-            var coinbaseTx = new Transaction()
+            var cbOut = new Output()
             {
-                Inputs = new List<Input>(),
-                Outputs = new List<Output>() {new Output() {Amount = subsidy, PublicKeyHash = MinerKeyHash.Bytes}},
-                TimeStamp = time
+                Amount = subsidy,
+                PublicKeyHash = MinerKeyHash.Bytes
             };
-            coinbaseTx.Id = new HexString(HashUtil.DoubleSHA256(JsonSerializer.Serialize(coinbaseTx)));
+            var tb = new TransactionBuilder(new List<Output>(){cbOut}, new List<Input>());
+            var coinbaseTx = tb.ToTransaction();
             BlockchainManager.VerifyTransaction(coinbaseTx, time, subsidy);
             txList.Insert(0, coinbaseTx);
 

@@ -66,24 +66,13 @@ namespace AntiquerChain.Blockchain
 
         public static Transaction CreateCoinBaseTransaction(int height, byte[] publicKeyHash, string engrave = "")
         {
-            var tx = new Transaction()
+            var cbOut = new Output()
             {
-                TimeStamp = DateTime.UtcNow,
-                Engraving = engrave,
-                Inputs = new List<Input>(),
-                Outputs = new List<Output>()
-                {
-                    new Output()
-                    {
-                        Amount = (ulong) GetSubsidy(height),
-                        PublicKeyHash = publicKeyHash
-                    }
-                },
-                TransactionFee = 0
+                Amount = (ulong) GetSubsidy(height),
+                PublicKeyHash = publicKeyHash
             };
-            var idBytes = JsonSerializer.Serialize(tx);
-            tx.Id = new HexString(idBytes);
-            return tx;
+            var tb = new TransactionBuilder(new List<Output>(){cbOut}, new List<Input>(), engrave);
+            return tb.ToTransaction();
         }
 
         public static bool VerifyBlockchain()
