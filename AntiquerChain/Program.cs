@@ -13,7 +13,7 @@ namespace AntiquerChain
     {
         static async Task Main(string[] args)
         {
-            CompositeResolver.RegisterAndSetAsDefault(new IJsonFormatter[] { new IPEndPointFormatter() }, new[] { StandardResolver.Default });
+            CompositeResolver.RegisterAndSetAsDefault(new IJsonFormatter[] { new IPEndPointFormatter(), new HexStringFormatter() }, new[] { StandardResolver.Default });
             await Host.CreateDefaultBuilder().RunConsoleAppFrameworkAsync<AntiquerChain>(args);
         }
     }

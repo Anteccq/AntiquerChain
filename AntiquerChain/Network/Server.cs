@@ -32,10 +32,10 @@ namespace AntiquerChain.Network
         public async Task StartAsync()
         {
             _logger.LogInformation("Server: Start Listening...");
-            var endPoint = IPEndPoint.Parse($"127.0.0.1:{NetworkConstant.SERVER_PORT}");
+            var endPoint = IPEndPoint.Parse($"0.0.0.0:{NetworkConstant.SERVER_PORT}");
             _listener = new TcpListener(endPoint);
             _listener.Start();
-            await (NewConnection?.Invoke(endPoint, MessageType.HandShake) ?? Task.CompletedTask);
+            //await (NewConnection?.Invoke(endPoint, MessageType.HandShake) ?? Task.CompletedTask);
             _listenTask = ConnectionWaitAsync();
         }
 

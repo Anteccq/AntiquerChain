@@ -6,8 +6,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="DLL\**" />
+    <EmbeddedResource Remove="DLL\**" />
+    <None Remove="DLL\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ConsoleAppFramework" Version="2.4.0" />
     <PackageReference Include="Utf8Json" Version="1.3.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BouncyCastle.Crypto">
+      <HintPath>DLL\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
