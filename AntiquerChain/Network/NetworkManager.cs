@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AntiquerChain.Blockchain;
 using Microsoft.Extensions.Logging;
 using Utf8Json;
 using static AntiquerChain.Network.Util.Messenger;
@@ -68,6 +69,7 @@ namespace AntiquerChain.Network
                 MessageType.HandShake => HandShakeHandle(JsonSerializer.Deserialize<HandShake>(msg.Payload), endPoint),
                 MessageType.Addr => AddrHandle(JsonSerializer.Deserialize<AddrPayload>(msg.Payload), endPoint),
                 MessageType.Inventory => Task.CompletedTask,
+                MessageType.NewTransaction => NewTransactionHandle(JsonSerializer.Deserialize<NewTransaction>(msg.Payload), endPoint),
                 MessageType.Notice => Task.CompletedTask,
                 MessageType.Ping => Task.CompletedTask,
                 MessageType.SurfaceHandShake => SurfaceHandShakeHandle(endPoint),
@@ -93,6 +95,12 @@ namespace AntiquerChain.Network
                 ConnectServers = UnionEndpoints(ConnectServers, msg.KnownIpEndPoints);
             }
             await BroadcastEndPointsAsync();
+        }
+
+        async Task NewTransactionHandle(NewTransaction msg, IPEndPoint endPoint)
+        {
+            _logger.LogInformation($"New Transaction : {msg.Transaction.Id}");
+            BlockchainManager.TransactionPool.Add(msg.Transaction);
         }
 
         async Task SurfaceHandShakeHandle(IPEndPoint endPoint)
