@@ -103,6 +103,12 @@ namespace AntiquerChain.Network
             BlockchainManager.TransactionPool.Add(msg.Transaction);
         }
 
+        async Task NewBlockHandle(NewBlock msg, IPEndPoint endPoint)
+        {
+            _logger.LogInformation($"New Block : {msg.Block.Id.String}");
+
+        }
+
         async Task SurfaceHandShakeHandle(IPEndPoint endPoint)
         {
             _logger.LogInformation($"Server: Surface is connected from {endPoint}");

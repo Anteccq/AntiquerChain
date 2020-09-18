@@ -23,6 +23,7 @@ namespace AntiquerChain.Network
 
         Inventory = 0x20,
         NewTransaction = 0x21,
+        NewBlock = 0x22,
 
         #endregion
 

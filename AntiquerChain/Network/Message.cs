@@ -81,4 +81,20 @@ namespace AntiquerChain.Network
             };
         }
     }
+
+    public class NewBlock
+    {
+        public Block Block { get; set; }
+
+        public static Message CreateMessage(Block block)
+        {
+            return new Message()
+            {
+                Payload = JsonSerializer.Serialize(new NewBlock()
+                {
+                    Block = block
+                })
+            };
+        }
+    }
 }
