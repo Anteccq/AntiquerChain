@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AntiquerChain.Blockchain;
+using AntiquerChain.Blockchain.Util;
+using AntiquerChain.Mining;
 using Microsoft.Extensions.Logging;
 using Utf8Json;
 using static AntiquerChain.Network.Util.Messenger;
@@ -20,9 +22,11 @@ namespace AntiquerChain.Network
         private Timer _timer;
         private List<IPEndPoint> ConnectSurfaces { get; } = new List<IPEndPoint>();
         private List<IPEndPoint> ConnectServers { get; set; } = new List<IPEndPoint>();
+        private Verifier _verifier;
 
-        public NetworkManager(CancellationToken token)
+        public NetworkManager(CancellationToken token, Verifier verifier)
         {
+            _verifier = verifier;
             var tokenSource = new CancellationTokenSource();
             _server = new Server(tokenSource);
             _server.NewConnection += NewConnection;
@@ -70,6 +74,7 @@ namespace AntiquerChain.Network
                 MessageType.Addr => AddrHandle(JsonSerializer.Deserialize<AddrPayload>(msg.Payload), endPoint),
                 MessageType.Inventory => Task.CompletedTask,
                 MessageType.NewTransaction => NewTransactionHandle(JsonSerializer.Deserialize<NewTransaction>(msg.Payload), endPoint),
+                MessageType.NewBlock => NewBlockHandle(JsonSerializer.Deserialize<NewBlock>(msg.Payload), endPoint),
                 MessageType.Notice => Task.CompletedTask,
                 MessageType.Ping => Task.CompletedTask,
                 MessageType.SurfaceHandShake => SurfaceHandShakeHandle(endPoint),
@@ -105,8 +110,14 @@ namespace AntiquerChain.Network
 
         async Task NewBlockHandle(NewBlock msg, IPEndPoint endPoint)
         {
-            _logger.LogInformation($"New Block : {msg.Block.Id.String}");
-
+            var block = msg.Block;
+            _logger.LogInformation($"New Block : {block.Id.String}");
+            if(!BlockchainManager.IsValidBlock(block)) return;
+            if (!BlockchainManager.Chain.Last().Id.Bytes.IsEqual(block.PreviousBlockHash.Bytes))
+            {
+                //Send Request Full Chain Message
+            }
+            _verifier.Verify(block);
         }
 
         async Task SurfaceHandShakeHandle(IPEndPoint endPoint)

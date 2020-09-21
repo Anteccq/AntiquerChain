@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text;
 using AntiquerChain.Blockchain.Util;
 using AntiquerChain.Cryptography;
+using AntiquerChain.Mining;
 using Utf8Json;
 
 namespace AntiquerChain.Blockchain
@@ -154,6 +155,26 @@ namespace AntiquerChain.Blockchain
             if(outSum > inSum) throw new ArgumentException();
 
             tx.TransactionFee = inSum - outSum;
+        }
+
+        public static bool IsValidBlock(Block block)
+        {
+            var computedId = ComputeBlockId(JsonSerializer.Serialize(block));
+            var target = Difficulty.GetTargetBytes(block.Bits);
+            var IsMined = Miner.HashCheck(computedId, target);
+            var twoHours = TimeSpan.FromHours(2);
+            var validDate = block.Timestamp < (DateTime.UtcNow + twoHours);
+            var isCoinBase = block.Transactions[0].Inputs.Count == 0;
+            return computedId.IsEqual(block.Id.Bytes) && IsMined && validDate && isCoinBase;
+        }
+
+        public static byte[] ComputeBlockId(byte[] data)
+        {
+            var block = JsonSerializer.Deserialize<Block>(data);
+            block.Id = null;
+            var serializedData = JsonSerializer.Serialize(block);
+            var hash = HashUtil.DoubleSHA256(serializedData);
+            return hash;
         }
     }
 }

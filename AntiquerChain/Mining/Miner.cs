@@ -40,7 +40,7 @@ namespace AntiquerChain.Mining
             return false;
         }
 
-        private static bool HashCheck(byte[] data1, byte[] target)
+        public static bool HashCheck(byte[] data1, byte[] target)
         {
             if (data1.Length != 32 || target.Length != 32) return false;
             for (var i = 0; i < data1.Length; i++)
@@ -110,6 +110,7 @@ namespace AntiquerChain.Mining
 
             var block = new Block()
             {
+                Id = null,
                 PreviousBlockHash = BlockchainManager.Chain.Last().Id,
                 Transactions = txList,
                 MerkleRootHash = HashUtil.ComputeMerkleRootHash(txIds),
