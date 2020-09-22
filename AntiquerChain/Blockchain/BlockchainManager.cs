@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text;
 using AntiquerChain.Blockchain.Util;
 using AntiquerChain.Cryptography;
+using AntiquerChain.Mining;
 using Utf8Json;
 
 namespace AntiquerChain.Blockchain
@@ -13,7 +14,7 @@ namespace AntiquerChain.Blockchain
     {
         public static List<Block> Chain { get; } = new List<Block>();
 
-        private const int CoinBaseInterval = 20;
+        private const int CoinBaseInterval = 10000;
 
         private static readonly DateTime GenesisTime = new DateTime(2020,8, 31, 15, 40, 30, DateTimeKind.Utc);
 
@@ -61,7 +62,7 @@ namespace AntiquerChain.Blockchain
                 Transactions = txs,
                 MerkleRootHash = rootHash,
                 Timestamp = GenesisTime,
-                Bits = 5
+                Bits = 12
             };
         }
 
@@ -96,6 +97,17 @@ namespace AntiquerChain.Blockchain
             return !isRight;
         }
 
+        public static bool VerifyBlockchain(IList<Block> blockchain)
+        {
+            var isRight = blockchain.Take(Chain.Count - 1).SkipWhile((block, i) =>
+            {
+                var leadData = JsonSerializer.Serialize(block);
+                return blockchain[i + 1].PreviousBlockHash.Bytes != HashUtil.DoubleSHA256(leadData);
+            }).Any();
+
+            return !isRight;
+        }
+
         public static ulong GetSubsidy(int height) =>
             (ulong)50 >> height / CoinBaseInterval;
 
@@ -115,7 +127,7 @@ namespace AntiquerChain.Blockchain
 
         public static void VerifyTransaction(Transaction tx, DateTime timestamp, ulong coinbase = 0)
         {
-            if(tx.TimeStamp > timestamp ||
+            if (tx.TimeStamp > timestamp ||
                !(coinbase == 0 ^ tx.Inputs.Count == 0))
                 throw new ArgumentException();
 
@@ -151,9 +163,29 @@ namespace AntiquerChain.Blockchain
                 outSum = checked(outSum + output.Amount);
             }
 
-            if(outSum > inSum) throw new ArgumentException();
+            if (outSum > inSum) throw new ArgumentException();
 
             tx.TransactionFee = inSum - outSum;
+        }
+
+        public static bool IsValidBlock(Block block)
+        {
+            var computedId = ComputeBlockId(JsonSerializer.Serialize(block));
+            var target = Difficulty.GetTargetBytes(block.Bits);
+            var IsMined = Miner.HashCheck(computedId, target);
+            var twoHours = TimeSpan.FromHours(2);
+            var validDate = block.Timestamp < (DateTime.UtcNow + twoHours);
+            var isCoinBase = block.Transactions[0].Inputs.Count == 0;
+            return computedId.IsEqual(block.Id.Bytes) && IsMined && validDate && isCoinBase;
+        }
+
+        public static byte[] ComputeBlockId(byte[] data)
+        {
+            var block = JsonSerializer.Deserialize<Block>(data);
+            block.Id = null;
+            var serializedData = JsonSerializer.Serialize(block);
+            var hash = HashUtil.DoubleSHA256(serializedData);
+            return hash;
         }
     }
 }

@@ -21,8 +21,8 @@ namespace AntiquerChain.Blockchain
                 _difficultyBits = value;
             }
         }
-        public const uint MaxDifficultBits = 32;
-        public const uint MinDifficultBits = 5;
+        public const uint MaxDifficultBits = 64;
+        public const uint MinDifficultBits = 12;
 
         private const int TargetTime = 6000;
         private const int DifInterval = 100;
@@ -30,6 +30,7 @@ namespace AntiquerChain.Blockchain
         public static void CalculateNextDifficulty()
         {
             var actualTime = (Chain.Last().Timestamp - Chain[^DifInterval].Timestamp).Seconds;
+            Console.WriteLine($"Now actualTime is {actualTime}");
             if (actualTime < TargetTime / 2) DifficultyBits++;
             if (actualTime > TargetTime * 2) DifficultyBits--;
         }
