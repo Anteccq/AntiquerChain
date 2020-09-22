@@ -90,6 +90,7 @@ namespace AntiquerChain.Network
         {
             return new Message()
             {
+                Type = MessageType.NewBlock,
                 Payload = JsonSerializer.Serialize(new NewBlock()
                 {
                     Block = block

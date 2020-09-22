@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using AntiquerChain.Blockchain;
 using AntiquerChain.Cryptography;
+using AntiquerChain.Network;
 using Microsoft.Extensions.Logging;
 using Utf8Json;
 
@@ -15,10 +17,11 @@ namespace AntiquerChain.Mining
         private ILogger _logger = Logging.Create<Miner>();
         public bool IsMining = false;
         private CancellationTokenSource _tokenSource;
+        public NetworkManager NetworkManager { get; set; }
 
         public HexString MinerKeyHash { get; set; }
 
-        public bool Mining(Block block, CancellationToken token)
+        public static bool Mining(Block block, CancellationToken token)
         {
             var rnd = new Random();
             var buf = new byte[sizeof(ulong)];
@@ -32,7 +35,6 @@ namespace AntiquerChain.Mining
                 var data = JsonSerializer.Serialize(block);
                 var hash = HashUtil.DoubleSHA256(data);
                 if (!HashCheck(hash, target)) continue;
-                _logger.LogInformation($"Success : {string.Join("",hash.Select(x => $"{x:X2}"))}");
                 block.Id = new HexString(hash);
                 return true;
             }
@@ -55,7 +57,7 @@ namespace AntiquerChain.Mining
         {
             _tokenSource = new CancellationTokenSource();
             IsMining = true;
-            Execute(_tokenSource.Token);
+            Task.Run(() => Execute(_tokenSource.Token));
         }
 
         public void Stop()
@@ -103,6 +105,7 @@ namespace AntiquerChain.Mining
             };
             var tb = new TransactionBuilder(new List<Output>(){cbOut}, new List<Input>());
             var coinbaseTx = tb.ToTransaction(time);
+
             BlockchainManager.VerifyTransaction(coinbaseTx, time, subsidy);
             txList.Insert(0, coinbaseTx);
 
@@ -117,12 +120,21 @@ namespace AntiquerChain.Mining
                 Bits = Difficulty.DifficultyBits
             };
 
-            if (!Mining(block, token)) return;
+            if (!Mining(block, token))
+            {
+                _logger.LogError($"Error. Stop Mining");
+                return;
+            }
+
+            _logger.LogInformation($"Success : {string.Join("", block.Id.Bytes.Select(x => $"{x:X2}"))}");
 
             _logger.LogInformation($"Mined");
             _logger.LogInformation($"{JsonSerializer.PrettyPrint(JsonSerializer.Serialize(block))}");
 
             //Broadcast Block
+            var msg = NewBlock.CreateMessage(block);
+            NetworkManager.BroadCastMessageAsync(msg);
+            NetworkManager.NewBlockHandle(new NewBlock() {Block = block}, null);
         }
     }
 }
