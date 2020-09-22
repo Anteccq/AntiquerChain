@@ -19,12 +19,19 @@ namespace AntiquerChain
         [Command("run", "Start P2P Network")]
         public async Task RunAsync([Option("i")] string endPoint)
         {
+            var (privateKey, publicKey) = SignManager.GenerateKeys();
+            var publickKeyHash = new HexString(HashUtil.RIPEMD_SHA256(publicKey));
             if (string.IsNullOrEmpty(endPoint) || !IPEndPoint.TryParse(endPoint, out var ipEndPoint))
             {
                 Console.WriteLine("異常終了");
                 return;
             }
-            var manager = new NetworkManager(Context.CancellationToken);
+            var vry = new Verifier();
+            var miner = new Miner
+            {
+                MinerKeyHash = publickKeyHash
+            };
+            var manager = new NetworkManager(Context.CancellationToken, vry);
             await manager.StartServerAsync();
             var t = Task.Run(async () => await manager.ConnectAsync(ipEndPoint), Context.CancellationToken);
             var surfaceManager = new SurfaceManager(Context.CancellationToken);
@@ -35,7 +42,7 @@ namespace AntiquerChain
         }
 
         [Command("min", "Mining genesis block")]
-        public void Mining()
+        public async Task Mining()
         {
             var (privateKey, publicKey) = SignManager.GenerateKeys();
             var publickKeyHash = new HexString(HashUtil.RIPEMD_SHA256(publicKey));
@@ -45,8 +52,13 @@ namespace AntiquerChain
             {
                 MinerKeyHash = publickKeyHash
             };
+            var verifier = new Verifier();
+            verifier.Applied += () => miner.Restart();
+            var nm = new NetworkManager(Context.CancellationToken, verifier);
+            nm.Miner = miner;
+            miner.NetworkManager = nm;
             Console.WriteLine("Mining");
-            miner.Mining(genesis, Context.CancellationToken);
+            Miner.Mining(genesis, Context.CancellationToken);
             BlockchainManager.Chain.Add(genesis);
 
 
@@ -65,8 +77,9 @@ namespace AntiquerChain
                     Timestamp = DateTime.UtcNow,
                     Bits = 1
                 };
-                miner.Mining(b, Context.CancellationToken);
-                BlockchainManager.Chain.Add(b);
+                Miner.Mining(b, Context.CancellationToken);
+                var bm = new NewBlock(){Block = b};
+                await nm.NewBlockHandle(bm, null);
                 Task.Delay(10).GetAwaiter().GetResult();
             }
 
@@ -91,8 +104,9 @@ namespace AntiquerChain
             BlockchainManager.TransactionPool.Add(tx);
             miner.Start();
 
-            Console.WriteLine($"{BlockchainManager.VerifyBlockchain()} : OK");
             Console.ReadLine();
+            miner.Stop();
+            Console.WriteLine($"{BlockchainManager.VerifyBlockchain()} : OK");
         }
     }
 }

@@ -6,6 +6,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AntiquerChain.Blockchain;
+using AntiquerChain.Blockchain.Util;
+using AntiquerChain.Mining;
 using Microsoft.Extensions.Logging;
 using Utf8Json;
 using static AntiquerChain.Network.Util.Messenger;
@@ -19,9 +22,12 @@ namespace AntiquerChain.Network
         private Timer _timer;
         private List<IPEndPoint> ConnectSurfaces { get; } = new List<IPEndPoint>();
         private List<IPEndPoint> ConnectServers { get; set; } = new List<IPEndPoint>();
+        private Verifier _verifier;
+        public Miner Miner { get; set; }
 
-        public NetworkManager(CancellationToken token)
+        public NetworkManager(CancellationToken token, Verifier verifier)
         {
+            _verifier = verifier;
             var tokenSource = new CancellationTokenSource();
             _server = new Server(tokenSource);
             _server.NewConnection += NewConnection;
@@ -68,6 +74,10 @@ namespace AntiquerChain.Network
                 MessageType.HandShake => HandShakeHandle(JsonSerializer.Deserialize<HandShake>(msg.Payload), endPoint),
                 MessageType.Addr => AddrHandle(JsonSerializer.Deserialize<AddrPayload>(msg.Payload), endPoint),
                 MessageType.Inventory => Task.CompletedTask,
+                MessageType.NewTransaction => NewTransactionHandle(JsonSerializer.Deserialize<NewTransaction>(msg.Payload), endPoint),
+                MessageType.NewBlock => NewBlockHandle(JsonSerializer.Deserialize<NewBlock>(msg.Payload), endPoint),
+                MessageType.FullChain => ReceiveFullChain(msg, endPoint),
+                MessageType.RequestFullChain => SendFullChain(endPoint),
                 MessageType.Notice => Task.CompletedTask,
                 MessageType.Ping => Task.CompletedTask,
                 MessageType.SurfaceHandShake => SurfaceHandShakeHandle(endPoint),
@@ -95,6 +105,84 @@ namespace AntiquerChain.Network
             await BroadcastEndPointsAsync();
         }
 
+        async Task NewTransactionHandle(NewTransaction msg, IPEndPoint endPoint)
+        {
+            _logger.LogInformation($"New Transaction : {msg.Transaction.Id}");
+            BlockchainManager.TransactionPool.Add(msg.Transaction);
+        }
+
+        public async Task NewBlockHandle(NewBlock msg, IPEndPoint endPoint)
+        {
+            var block = msg.Block;
+            _logger.LogInformation($"New Block : {block.Id.String}");
+            if(!BlockchainManager.IsValidBlock(block)) return;
+            if (!BlockchainManager.Chain.Last().Id.Bytes.IsEqual(block.PreviousBlockHash.Bytes))
+            {
+                //Send Request Full Chain Message
+                if(endPoint is null) return;
+                var req = new Message()
+                {
+                    Type = MessageType.RequestFullChain,
+                    Payload = new byte[]{0}
+                };
+                await BroadCastMessageAsync(req);
+                return;
+            }
+            _logger.LogInformation($"Block Validated");
+            _verifier.Verify(block);
+        }
+
+        async Task ReceiveFullChain(Message msg, IPEndPoint endPoint)
+        {
+            var chain = JsonSerializer.Deserialize<IList<Block>>(msg.Payload);
+            if (chain.Any(block => !BlockchainManager.IsValidBlock(block)) || !BlockchainManager.VerifyBlockchain(chain)) return;
+
+            var diff = (ulong)chain.Sum(x => x.Bits);
+            var localDiff = (ulong) BlockchainManager.Chain.Sum(x => x.Bits);
+            if (diff > localDiff)
+            {
+                Miner.Stop();
+                var localTxs = BlockchainManager.Chain.SelectMany(x => x.Transactions).ToList();
+                var remoteTxs = chain.SelectMany(x => x.Transactions).ToList();
+                foreach (var tx in localTxs.Where(tx => remoteTxs.Exists(x => x.Id.Bytes.IsEqual(tx.Id.Bytes))))
+                {
+                    localTxs.Remove(tx);
+                }
+
+                lock (BlockchainManager.TransactionPool)
+                {
+                    foreach (var tx in BlockchainManager.TransactionPool.Where(tx => remoteTxs.Exists(x => x.Id.Bytes.IsEqual(tx.Id.Bytes))))
+                    {
+                        BlockchainManager.TransactionPool.Remove(tx);
+                    }
+                    BlockchainManager.TransactionPool.AddRange(localTxs);
+                }
+                Miner.Start();
+            }
+            else
+            {
+                await SendFullChain(endPoint);
+            }
+        }
+
+        async Task SendFullChain(IPEndPoint endPoint)
+        {
+            _logger.LogInformation($"Server: Send Full Chain to {endPoint.Address}");
+            var blockMsg = new Message()
+            {
+                Type = MessageType.FullChain,
+                Payload = JsonSerializer.Serialize(BlockchainManager.Chain)
+            };
+            try
+            {
+                await SendMessageAsync(endPoint.Address, NetworkConstant.SERVER_PORT, blockMsg);
+            }
+            catch (SocketException)
+            {
+                _logger.LogInformation($"Server: Failed Send Full Chain to {endPoint}.");
+            }
+        }
+
         async Task SurfaceHandShakeHandle(IPEndPoint endPoint)
         {
             _logger.LogInformation($"Server: Surface is connected from {endPoint}");
@@ -102,19 +190,24 @@ namespace AntiquerChain.Network
 
         async Task BroadcastEndPointsAsync()
         {
-            if (ConnectServers is null) return;
-            _logger.LogInformation($"Server: Broadcast EndPoints to {ConnectServers.Count}");
             var addrMsg = AddrPayload.CreateMessage(ConnectServers);
+            await BroadCastMessageAsync(addrMsg);
+        }
+
+        public async Task BroadCastMessageAsync(Message msg)
+        {
+            if (ConnectServers is null) return;
+            _logger.LogInformation($"Server: Broadcast Message : {msg.Type}");
             var disconnectedList = new List<IPEndPoint>();
             foreach (var ep in ConnectServers)
             {
-                try { await SendMessageAsync(ep.Address, NetworkConstant.SERVER_PORT, addrMsg); }
-                catch(SocketException)
+                try { await SendMessageAsync(ep.Address, NetworkConstant.SERVER_PORT, msg); }
+                catch (SocketException)
                 {
                     disconnectedList.Add(ep);
                 }
             }
-            if(disconnectedList.Count == 0) return;
+            if (disconnectedList.Count == 0) return;
             foreach (var ep in disconnectedList) RemoveEndPoint(ep, ConnectServers);
             await BroadcastEndPointsAsync();
         }

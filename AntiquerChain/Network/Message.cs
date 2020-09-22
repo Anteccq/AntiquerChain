@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+using AntiquerChain.Blockchain;
 using Utf8Json;
 
 namespace AntiquerChain.Network
@@ -60,6 +61,40 @@ namespace AntiquerChain.Network
             {
                 Type = MessageType.SurfaceHandShake,
                 Payload = new byte[] {0}
+            };
+        }
+    }
+
+    public class NewTransaction
+    {
+        public Transaction Transaction { get; set; }
+
+        public static Message CreateMessage(Transaction transaction)
+        {
+            return new Message()
+            {
+                Type = MessageType.NewTransaction,
+                Payload = JsonSerializer.Serialize(new NewTransaction()
+                {
+                    Transaction = transaction
+                })
+            };
+        }
+    }
+
+    public class NewBlock
+    {
+        public Block Block { get; set; }
+
+        public static Message CreateMessage(Block block)
+        {
+            return new Message()
+            {
+                Type = MessageType.NewBlock,
+                Payload = JsonSerializer.Serialize(new NewBlock()
+                {
+                    Block = block
+                })
             };
         }
     }
