@@ -110,9 +110,14 @@ namespace AntiquerChain
         }
 
         [Command("runmin", "Run Network and Mining")]
-        public async Task RunAndMining([Option("i")] string endPoint, [Option("f")] bool isFirst)
+        public async Task RunAndMining([Option("i")] string endPoint, [Option("f")] string first)
         {
             if (string.IsNullOrEmpty(endPoint) || !IPEndPoint.TryParse(endPoint, out var ipEndPoint))
+            {
+                Console.WriteLine("異常終了");
+                return;
+            }
+            if (string.IsNullOrEmpty(first) || !bool.TryParse(first, out var isFirst))
             {
                 Console.WriteLine("異常終了");
                 return;
