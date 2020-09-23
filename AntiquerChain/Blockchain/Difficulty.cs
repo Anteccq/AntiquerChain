@@ -22,7 +22,7 @@ namespace AntiquerChain.Blockchain
             }
         }
         public const uint MaxDifficultBits = 64;
-        public const uint MinDifficultBits = 12;
+        public const uint MinDifficultBits = 17;
 
         private const int TargetTime = 6000;
         private const int DifInterval = 100;

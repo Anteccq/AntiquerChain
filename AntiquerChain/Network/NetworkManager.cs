@@ -115,7 +115,8 @@ namespace AntiquerChain.Network
         {
             var block = msg.Block;
             _logger.LogInformation($"New Block : {block.Id.String}");
-            if(!BlockchainManager.IsValidBlock(block)) return;
+            _logger.LogInformation($"New Block from {endPoint}");
+            if (!BlockchainManager.IsValidBlock(block)) return;
             if (!BlockchainManager.Chain.Last().Id.Bytes.IsEqual(block.PreviousBlockHash.Bytes))
             {
                 //Send Request Full Chain Message
@@ -125,7 +126,7 @@ namespace AntiquerChain.Network
                     Type = MessageType.RequestFullChain,
                     Payload = new byte[]{0}
                 };
-                await BroadCastMessageAsync(req);
+                await SendMessageAsync(endPoint.Address, NetworkConstant.SERVER_PORT, req);
                 return;
             }
             _logger.LogInformation($"Block Validated");
@@ -134,6 +135,7 @@ namespace AntiquerChain.Network
 
         async Task ReceiveFullChain(Message msg, IPEndPoint endPoint)
         {
+            _logger.LogInformation($"Received Full Chain from {endPoint.Address}");
             var chain = JsonSerializer.Deserialize<IList<Block>>(msg.Payload);
             if (chain.Any(block => !BlockchainManager.IsValidBlock(block)) || !BlockchainManager.VerifyBlockchain(chain)) return;
 

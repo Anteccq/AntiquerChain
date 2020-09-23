@@ -11,7 +11,7 @@ using AntiquerChain.Network;
 using ConsoleAppFramework;
 using Microsoft.Extensions.Logging;
 using Utf8Json;
-
+using static AntiquerChain.Network.Util.Messenger;
 namespace AntiquerChain
 {
     public class AntiquerChain : ConsoleAppBase
@@ -41,7 +41,7 @@ namespace AntiquerChain
             Console.ReadLine();
         }
 
-        [Command("min", "Mining genesis block")]
+        [Command("min", "Mining")]
         public async Task Mining()
         {
             var (privateKey, publicKey) = SignManager.GenerateKeys();
@@ -75,7 +75,7 @@ namespace AntiquerChain
                     Transactions = txs,
                     MerkleRootHash = rootHash,
                     Timestamp = DateTime.UtcNow,
-                    Bits = 1
+                    Bits = 12
                 };
                 Miner.Mining(b, Context.CancellationToken);
                 var bm = new NewBlock(){Block = b};
@@ -107,6 +107,52 @@ namespace AntiquerChain
             Console.ReadLine();
             miner.Stop();
             Console.WriteLine($"{BlockchainManager.VerifyBlockchain()} : OK");
+        }
+
+        [Command("runmin", "Run Network and Mining")]
+        public async Task RunAndMining([Option("i")] string endPoint, [Option("f")] bool isFirst)
+        {
+            if (string.IsNullOrEmpty(endPoint) || !IPEndPoint.TryParse(endPoint, out var ipEndPoint))
+            {
+                Console.WriteLine("異常終了");
+                return;
+            }
+            var (privateKey, publicKey) = SignManager.GenerateKeys();
+            var publickKeyHash = new HexString(HashUtil.RIPEMD_SHA256(publicKey));
+            //Genesis Mining
+            var genesis = BlockchainManager.CreateGenesis();
+            var miner = new Miner
+            {
+                MinerKeyHash = publickKeyHash
+            };
+            var verifier = new Verifier();
+            verifier.Applied += () => miner.Restart();
+            var nm = new NetworkManager(Context.CancellationToken, verifier);
+            nm.Miner = miner;
+            miner.NetworkManager = nm;
+
+            await nm.StartServerAsync();
+            var t = Task.Run(async () => await nm.ConnectAsync(ipEndPoint), Context.CancellationToken);
+            var surfaceManager = new SurfaceManager(Context.CancellationToken);
+            surfaceManager.StartSurface();
+            var tt = Task.Run(async () => await surfaceManager.ConnectServerAsync(ipEndPoint), Context.CancellationToken);
+
+            if (isFirst)
+            {
+                Console.WriteLine("Genesis Mining");
+                Miner.Mining(genesis, Context.CancellationToken);
+                BlockchainManager.Chain.Add(genesis);
+                miner.Start();
+            }
+            else
+            {
+                t.Wait();
+                await SendMessageAsync(ipEndPoint.Address, NetworkConstant.SERVER_PORT,
+                    new Message() {Type = MessageType.RequestFullChain});
+            }
+
+
+            Console.ReadLine();
         }
     }
 }

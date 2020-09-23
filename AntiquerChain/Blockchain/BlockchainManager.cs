@@ -62,7 +62,7 @@ namespace AntiquerChain.Blockchain
                 Transactions = txs,
                 MerkleRootHash = rootHash,
                 Timestamp = GenesisTime,
-                Bits = 12
+                Bits = 17
             };
         }
 
