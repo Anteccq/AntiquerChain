@@ -151,7 +151,6 @@ namespace AntiquerChain
             }
             else
             {
-                t.Wait();
                 await SendMessageAsync(ipEndPoint.Address, NetworkConstant.SERVER_PORT,
                     new Message() {Type = MessageType.RequestFullChain});
             }
