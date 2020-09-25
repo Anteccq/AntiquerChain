@@ -10,9 +10,13 @@ namespace AntiquerChain.Network.Util
 {
     public static class Messenger
     {
+        private const int timeOut = 3000;
         public static async Task SendMessageAsync(IPAddress remoteAddress, int port, Message message)
         {
-            using var client = new TcpClient();
+            using var client = new TcpClient(){
+                SendTimeout = timeOut,
+                ReceiveTimeout = timeOut
+            };
             await client.ConnectAsync(remoteAddress, port);
             await using var stream = client.GetStream();
             await JsonSerializer.SerializeAsync(stream, message);

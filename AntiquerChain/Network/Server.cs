@@ -64,6 +64,7 @@ namespace AntiquerChain.Network
                     }
                 }
             }
+            _logger.LogInformation("Server: Stop ServerCore.");
             _listener.Stop();
         }
 
