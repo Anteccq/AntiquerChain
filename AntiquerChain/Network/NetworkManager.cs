@@ -150,6 +150,7 @@ namespace AntiquerChain.Network
                 _logger.LogInformation($"とぅる1");
                 var remoteTxs = chain.SelectMany(x => x.Transactions).ToList();
                 _logger.LogInformation($"localTxs * {localTxs.Count}");
+                //localTxs.Where(tx => !remoteTxs.Exists(x => x.Id.Bytes.IsEqual(tx.Id.Bytes))).ToList();
                 foreach (var tx in localTxs.Where(tx => remoteTxs.Exists(x => x.Id.Bytes.IsEqual(tx.Id.Bytes))))
                 {
                     _logger.LogInformation($"Remove");
@@ -178,6 +179,7 @@ namespace AntiquerChain.Network
             {
                 //await SendFullChain(endPoint);
             }
+            _logger.LogInformation($"End of Full Chain");
         }
 
         async Task SendFullChain(IPEndPoint endPoint)

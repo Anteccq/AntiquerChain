@@ -53,10 +53,11 @@ namespace AntiquerChain.Network
                     try
                     {
                         using var client = t.Result;
+                        var endPoint = client.Client.RemoteEndPoint as IPEndPoint;
+                        if(endPoint.Address.ToString() == "127.0.0.1") continue;
                         var message = await JsonSerializer.DeserializeAsync<Message>(client.GetStream());
-                        var endPoint = client.Client.RemoteEndPoint;
-                        await (NewConnection?.Invoke(endPoint as IPEndPoint, message.Type) ?? Task.CompletedTask);
-                        await (MessageReceived?.Invoke(message, endPoint as IPEndPoint) ?? Task.CompletedTask);
+                        await (NewConnection?.Invoke(endPoint, message.Type) ?? Task.CompletedTask);
+                        await (MessageReceived?.Invoke(message, endPoint) ?? Task.CompletedTask);
                     }
                     catch (SocketException e)
                     {

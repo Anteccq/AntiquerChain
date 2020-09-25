@@ -134,6 +134,7 @@ namespace AntiquerChain.Mining
             var msg = NewBlock.CreateMessage(block);
             NetworkManager.BroadCastMessageAsync(msg);
             //NetworkManager.NewBlockHandle(new NewBlock() {Block = block}, null);
+            _logger.LogInformation($"End Mine");
         }
     }
 }
