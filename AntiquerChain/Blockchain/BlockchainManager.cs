@@ -104,15 +104,13 @@ namespace AntiquerChain.Blockchain
             {
                 try{
                     var leadData = JsonSerializer.Serialize(block);
-                    Console.WriteLine($"{i}/{blockchain.Count}");
                     return blockchain[i + 1].PreviousBlockHash.Bytes != HashUtil.DoubleSHA256(leadData);
                 }
                 catch{
-                    Console.WriteLine($"ERROR!");
                     return false;
                 }
             }).Any();
-            Console.WriteLine($"YAYAYA");
+            Console.WriteLine($"Chain Verify : {!isRight}");
             return !isRight;
         }
 
