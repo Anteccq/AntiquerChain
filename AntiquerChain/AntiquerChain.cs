@@ -137,22 +137,18 @@ namespace AntiquerChain
             miner.NetworkManager = nm;
 
             await nm.StartServerAsync();
-            var t = Task.Run(async () => await nm.ConnectAsync(ipEndPoint), Context.CancellationToken);
-            var surfaceManager = new SurfaceManager(Context.CancellationToken);
-            surfaceManager.StartSurface();
-            var tt = Task.Run(async () => await surfaceManager.ConnectServerAsync(ipEndPoint), Context.CancellationToken);
+            //var surfaceManager = new SurfaceManager(Context.CancellationToken);
+            //surfaceManager.StartSurface();
 
             if (isFirst)
             {
                 Console.WriteLine("Genesis Mining");
                 Miner.Mining(genesis, Context.CancellationToken);
                 BlockchainManager.Chain.Add(genesis);
+                Console.ReadLine();
+                await nm.ConnectAsync(ipEndPoint);
+                //var tt = Task.Run(async () => await surfaceManager.ConnectServerAsync(ipEndPoint), Context.CancellationToken);
                 miner.Start();
-            }
-            else
-            {
-                await SendMessageAsync(ipEndPoint.Address, NetworkConstant.SERVER_PORT,
-                    new Message() {Type = MessageType.RequestFullChain});
             }
 
 

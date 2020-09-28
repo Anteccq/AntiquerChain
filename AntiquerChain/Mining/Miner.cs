@@ -38,7 +38,6 @@ namespace AntiquerChain.Mining
                 block.Id = new HexString(hash);
                 return true;
             }
-
             return false;
         }
 
@@ -110,7 +109,7 @@ namespace AntiquerChain.Mining
             txList.Insert(0, coinbaseTx);
 
             var txIds = txList.Select(x => x.Id).ToList();
-
+            
             var block = new Block()
             {
                 Id = null,
@@ -119,7 +118,7 @@ namespace AntiquerChain.Mining
                 MerkleRootHash = HashUtil.ComputeMerkleRootHash(txIds),
                 Bits = Difficulty.DifficultyBits
             };
-
+            
             if (!Mining(block, token))
             {
                 _logger.LogError($"Error. Stop Mining");
@@ -134,7 +133,8 @@ namespace AntiquerChain.Mining
             //Broadcast Block
             var msg = NewBlock.CreateMessage(block);
             NetworkManager.BroadCastMessageAsync(msg);
-            NetworkManager.NewBlockHandle(new NewBlock() {Block = block}, null);
+            //NetworkManager.NewBlockHandle(new NewBlock() {Block = block}, null);
+            _logger.LogInformation($"End Mine");
         }
     }
 }

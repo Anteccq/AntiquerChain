@@ -99,12 +99,20 @@ namespace AntiquerChain.Blockchain
 
         public static bool VerifyBlockchain(IList<Block> blockchain)
         {
-            var isRight = blockchain.Take(Chain.Count - 1).SkipWhile((block, i) =>
+            //Dead lock?
+            var isRight = blockchain.Take(blockchain.Count - 1).SkipWhile((block, i) =>
             {
-                var leadData = JsonSerializer.Serialize(block);
-                return blockchain[i + 1].PreviousBlockHash.Bytes != HashUtil.DoubleSHA256(leadData);
+                try{
+                    var leadData = JsonSerializer.Serialize(block);
+                    Console.WriteLine($"{i}/{blockchain.Count}");
+                    return blockchain[i + 1].PreviousBlockHash.Bytes != HashUtil.DoubleSHA256(leadData);
+                }
+                catch{
+                    Console.WriteLine($"ERROR!");
+                    return false;
+                }
             }).Any();
-
+            Console.WriteLine($"YAYAYA");
             return !isRight;
         }
 
@@ -136,7 +144,7 @@ namespace AntiquerChain.Blockchain
             var inSum = coinbase;
             foreach (var input in tx.Inputs)
             {
-                var chainTxs = Chain.SelectMany(x => x.Transactions);
+                var chainTxs = Chain.SelectMany(x => x.Transactions).ToArray();
                 //Input Verify
                 var transactions = chainTxs as Transaction[] ?? chainTxs.ToArray();
                 var prevOutTx = transactions
