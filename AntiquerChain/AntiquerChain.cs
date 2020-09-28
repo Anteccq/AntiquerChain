@@ -154,7 +154,8 @@ namespace AntiquerChain
 
             Console.ReadLine();
 
-            JsonSerializer.PrettyPrint(JsonSerializer.Serialize(BlockchainManager.Chain.Select(x => new {Id = x.Id.String, PrevId = x.PreviousBlockHash.String})));
+            var fullChainJson = JsonSerializer.PrettyPrint(JsonSerializer.Serialize(BlockchainManager.Chain.Select(x => new {Id = x.Id.String, PrevId = x.PreviousBlockHash.String})));
+            Console.WriteLine(fullChainJson);
         }
     }
 }
